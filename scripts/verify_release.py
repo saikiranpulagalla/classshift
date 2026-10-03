@@ -4,6 +4,7 @@ import ast
 import importlib.util
 from importlib import metadata
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -19,8 +20,28 @@ REQUIRED_FILES = {
     "classshift/candidates.py", "classshift/optimizer.py", "classshift/solution_validator.py",
     "classshift/explain.py", "classshift/service.py", "scripts/brute_force_oracle.py",
     "scripts/benchmark.py", "scripts/browser_smoke.py", "scripts/verify_release.py", "data/demo_school.json",
+    "scripts/release_probes.py",
     "templates/index.html", "static/styles.css", "static/request_gate.js", "static/app.js",
 }
+
+REQUIRED_RELEASE_PROBES = {
+    "probe_primary_chain",
+    "probe_infeasible_fixture",
+    "probe_validator_rejects_corruption",
+    "probe_equal_optimum_minimum",
+}
+
+MANDATORY_TEST_NODES = (
+    "tests/test_golden_fixtures.py::test_golden",
+    "tests/test_golden_fixtures.py::test_chain3_exact_assignment",
+    "tests/test_differential.py::test_differential_small_random_cases",
+    "tests/test_solution_validator.py::test_duplicate_lesson_assignment_detected",
+    "tests/test_service_integrity.py::test_service_blocks_duplicate_proposals_without_exposing_validator_details",
+    "tests/test_api.py::test_valid_optimal",
+    "tests/test_api.py::test_valid_infeasible",
+    "tests/test_api.py::test_solver_error_does_not_leak_solver_diagnostic",
+    "tests/test_frontend_race.py::test_request_gate_race_semantics_execute_in_javascript_runtime",
+)
 
 REQUIRED_FIXTURES = {
     "no_outage.json", "direct_move.json", "chain_2.json", "chain_3.json",
@@ -125,6 +146,78 @@ def _test_functions(path: Path) -> set[str]:
     }
 
 
+def _top_level_functions(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    return {
+        node.name
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _meaningful_test_body(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Reject obvious no-op tests without prescribing a test coding style."""
+    body = list(node.body)
+    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+        body.pop(0)
+    if not body:
+        return False
+    return not all(
+        isinstance(statement, ast.Pass)
+        or (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant))
+        or (
+            isinstance(statement, ast.Assert)
+            and isinstance(statement.test, ast.Constant)
+            and statement.test.value is True
+        )
+        for statement in body
+    )
+
+
+def _trivial_mandatory_tests(path: Path, required_names: set[str]) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    functions = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    return {
+        name for name in required_names
+        if name in functions and not _meaningful_test_body(functions[name])
+    }
+
+
+def normalize_release_tag(tag: str) -> str | None:
+    match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)-(rc\d+)", tag)
+    if match is None:
+        return None
+    return f"{match.group(1)}.{match.group(2)}.{match.group(3)}{match.group(4)}"
+
+
+def _package_version() -> str:
+    source = (ROOT / "classshift" / "__init__.py").read_text(encoding="utf-8")
+    match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']\s*$', source, re.MULTILINE)
+    if match is None:
+        raise ValueError("classshift.__version__ is missing")
+    version = match.group(1)
+    if re.fullmatch(r"\d+\.\d+\.\d+rc\d+", version) is None:
+        raise ValueError(f"classshift.__version__ is malformed: {version!r}")
+    return version
+
+
+def version_tag_error(package_version: str, release_tags: list[str]) -> str | None:
+    if len(release_tags) > 1:
+        return "multiple exact release tags found"
+    if not release_tags:
+        return None
+    expected_version = normalize_release_tag(release_tags[0])
+    if expected_version is None:
+        return f"malformed exact release tag: {release_tags[0]}"
+    if package_version != expected_version:
+        return f"package version/tag mismatch: package {package_version}, tag {release_tags[0]}"
+    return None
+
+
 def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
 
@@ -136,7 +229,7 @@ def _major_minor(version: str) -> tuple[int, int]:
     return int(parts[0]), int(parts[1])
 
 
-def main() -> int:
+def main(static_only: bool = False) -> int:
     failures: list[str] = []
     notes: list[str] = []
 
@@ -166,8 +259,52 @@ def main() -> int:
             failures.append(
                 f"{rel} is missing mandatory release test(s): {', '.join(missing_names)}"
             )
+        try:
+            trivial_names = sorted(_trivial_mandatory_tests(path, required_names))
+        except Exception as exc:
+            failures.append(f"could not inspect mandatory test bodies in {rel}: {exc}")
+            continue
+        if trivial_names:
+            manifest_ok = False
+            failures.append(
+                f"{rel} has trivial mandatory release test(s): {', '.join(trivial_names)}"
+            )
     if manifest_ok:
         notes.append("mandatory test manifest: PASS")
+
+    probes_path = ROOT / "scripts" / "release_probes.py"
+    try:
+        probe_names = _top_level_functions(probes_path)
+        missing_probes = sorted(REQUIRED_RELEASE_PROBES - probe_names)
+        if missing_probes:
+            failures.append(
+                f"release probe layer is missing required probe(s): {', '.join(missing_probes)}"
+            )
+        else:
+            notes.append("release probe manifest: PASS")
+    except Exception as exc:
+        failures.append(f"could not inspect release probe layer: {exc}")
+
+    try:
+        package_version = _package_version()
+        git = shutil.which("git")
+        if git and (ROOT / ".git").exists():
+            tag_proc = _run([git, "tag", "--points-at", "HEAD"])
+            if tag_proc.returncode != 0:
+                failures.append("could not inspect exact Git release tag")
+            else:
+                release_tags = [tag.strip() for tag in tag_proc.stdout.splitlines() if tag.strip().startswith("v")]
+                tag_error = version_tag_error(package_version, release_tags)
+                if tag_error:
+                    failures.append(tag_error)
+                elif release_tags:
+                    notes.append(f"package version/tag consistency: PASS ({package_version})")
+                else:
+                    notes.append("package version/tag consistency: UNVERIFIED (no exact release tag)")
+        else:
+            notes.append("package version/tag consistency: UNVERIFIED (Git metadata unavailable)")
+    except Exception as exc:
+        failures.append(f"package version verification failed: {exc}")
 
     try:
         python_files = [
@@ -318,7 +455,7 @@ def main() -> int:
         importlib.util.find_spec("playwright") is not None
         and (shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome") or shutil.which("google-chrome-stable")) is not None
     )
-    if browser_available:
+    if browser_available and not static_only:
         browser_proc = _run([sys.executable, "scripts/browser_smoke.py"])
         if browser_proc.returncode != 0:
             failures.append("browser frontend smoke test failed")
@@ -329,13 +466,14 @@ def main() -> int:
     else:
         notes.append("browser frontend smoke: UNVERIFIED (Playwright/Chromium unavailable)")
 
-    offline_proc = _run([sys.executable, "-m", "pytest", "-q", *OFFLINE_TESTS])
-    if offline_proc.returncode != 0:
-        failures.append("dependency-free pytest subset failed")
-        print(offline_proc.stdout)
-        print(offline_proc.stderr, file=sys.stderr)
-    else:
-        notes.append(f"dependency-free pytest: PASS ({offline_proc.stdout.strip()})")
+    if not static_only:
+        offline_proc = _run([sys.executable, "-m", "pytest", "-q", *OFFLINE_TESTS])
+        if offline_proc.returncode != 0:
+            failures.append("dependency-free pytest subset failed")
+            print(offline_proc.stdout)
+            print(offline_proc.stderr, file=sys.stderr)
+        else:
+            notes.append(f"dependency-free pytest: PASS ({offline_proc.stdout.strip()})")
 
     runtime_targets = {
         "flask": ("Flask", (3, 1)),
@@ -344,6 +482,8 @@ def main() -> int:
     }
     missing_runtime: list[str] = []
     for module, (distribution, expected) in runtime_targets.items():
+        if static_only:
+            break
         if importlib.util.find_spec(module) is None:
             missing_runtime.append(module)
             failures.append(f"missing required runtime dependency: {module}")
@@ -364,10 +504,27 @@ def main() -> int:
         else:
             notes.append(f"{distribution} version: PASS ({installed})")
 
-    if sys.version_info[:2] != (3, 11):
+    if not static_only and sys.version_info[:2] != (3, 11):
         failures.append(f"release target requires Python 3.11; running {sys.version.split()[0]}")
 
-    if not missing_runtime:
+    if not static_only and not missing_runtime:
+        try:
+            from scripts import release_probes
+
+            for probe_name in sorted(REQUIRED_RELEASE_PROBES):
+                getattr(release_probes, probe_name)()
+            notes.append("independent release probes: PASS")
+        except Exception as exc:
+            failures.append(f"independent release probe failed: {type(exc).__name__}: {exc}")
+
+        mandatory_proc = _run([sys.executable, "-m", "pytest", "-q", *MANDATORY_TEST_NODES])
+        if mandatory_proc.returncode != 0:
+            failures.append("mandatory critical pytest nodes failed")
+            print(mandatory_proc.stdout)
+            print(mandatory_proc.stderr, file=sys.stderr)
+        else:
+            notes.append(f"mandatory critical pytest nodes: PASS ({mandatory_proc.stdout.strip()})")
+
         proc = _run([sys.executable, "-m", "pytest", "-q"])
         if proc.returncode != 0:
             failures.append("full pytest failed")
@@ -402,4 +559,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(static_only="--static-only" in sys.argv[1:]))

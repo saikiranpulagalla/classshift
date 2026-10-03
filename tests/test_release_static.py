@@ -141,3 +141,21 @@ def test_input_changes_are_wired_to_clear_and_invalidate_results():
 def test_room_grid_can_shrink_below_nominal_card_width_for_zoom_reflow():
     css = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
     assert "minmax(min(190px, 100%), 1fr)" in css
+
+
+def test_release_tag_normalization_accepts_only_expected_rc_format():
+    from scripts.verify_release import normalize_release_tag, version_tag_error
+
+    assert normalize_release_tag("v1.0.0-rc6") == "1.0.0rc6"
+    assert normalize_release_tag("1.0.0rc6") is None
+    assert normalize_release_tag("v1.0.0") is None
+    assert version_tag_error("1.0.0rc6", ["v1.0.0-rc6"]) is None
+    assert "mismatch" in (version_tag_error("1.0.0rc5", ["v1.0.0-rc6"]) or "")
+    assert version_tag_error("1.0.0rc6", []) is None
+    assert "malformed" in (version_tag_error("1.0.0rc6", ["v1.0.0"]) or "")
+
+
+def test_release_probe_manifest_covers_release_defining_invariants():
+    from scripts.verify_release import REQUIRED_RELEASE_PROBES, _top_level_functions
+
+    assert REQUIRED_RELEASE_PROBES <= _top_level_functions(ROOT / "scripts" / "release_probes.py")

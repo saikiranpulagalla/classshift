@@ -1,0 +1,22 @@
+RC6 remediation evidence — executed on Windows / Python 3.12.0
+
+Release-gate hardening:
+- `python -m pytest -q tests/test_release_static.py tests/test_release_verifier.py`
+- Result: 25 passed.
+- The isolated-copy verifier attacks covered deleted and renamed mandatory tests,
+  `pass`, docstring-only, and `assert True` test bodies, a missing fixture,
+  `debug=True`, an unsafe DOM sink, malformed package metadata, and a removed
+  release probe. Every mutated copy exited non-zero with its expected reason.
+
+Dependency-free regression:
+- `python -m pytest -q tests/test_input_validation.py tests/test_loader.py tests/test_candidates.py tests/test_solution_validator.py tests/test_release_static.py tests/test_release_verifier.py tests/test_benchmark_cases.py tests/test_explain.py tests/test_oracle.py tests/test_frontend_race.py`
+- Result: 104 passed.
+- `node tests/js/test_request_gate.js`
+- Result: PASS.
+
+Target-runtime attempt:
+- `py -0p` reported no installed Python installations.
+- The available interpreter is Python 3.12.0, not the required Python 3.11.
+- Flask 3.0.3 is installed; Waitress and OR-Tools are unavailable.
+- Therefore real OR-Tools, full pytest, API/Waitress, browser, and benchmark
+  evidence are not claimed by this file.
