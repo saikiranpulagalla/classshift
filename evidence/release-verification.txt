@@ -1,3 +1,8 @@
+- strict demo/fixture validation and brute-force fixture oracle: PASS
+- validator/oracle independence source check: PASS
+- frontend release safety source checks: PASS
+- dependency-free pytest: PASS (.................................................................        [100%]
+65 passed in 0.12s)
 RELEASE VERIFICATION: FAIL
 - missing required runtime dependency: flask
 - missing required runtime dependency: waitress

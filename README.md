@@ -75,6 +75,8 @@ pytest -q
 python scripts/verify_release.py
 ```
 
+`pytest.ini` pins the repository root on the import path so the documented `pytest -q` command works consistently across launchers.
+
 Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, validator corruption, API status separation, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances.
 
 ## Demo
@@ -96,7 +98,7 @@ The UI uses semantic controls and tables, visible focus, text plus color for sta
 These are implementation design measures, not a claim of formal accessibility certification.
 
 ## Performance
-`scripts/benchmark.py` can record measured validation/solver/validator/total timings for several synthetic sizes into `evidence/benchmark.json`. Do not quote numbers unless that file was produced by an actual run in the environment being discussed.
+`scripts/benchmark.py` can record measured validation, candidate-generation, solver, validator, and total timings for deterministic **dense, sparse, bottleneck, and near-infeasible** synthetic cases at several sizes into `evidence/benchmark.json`. Do not quote numbers unless that file was produced by an actual run in the environment being discussed.
 
 ## Evidence policy
 Only actual executed evidence belongs in `evidence/`. The release verification script fails on missing critical files, invalid JSON, `debug=True`, unsafe `innerHTML`, or failing pytest. No fabricated benchmark, user-validation, or test claims are included.

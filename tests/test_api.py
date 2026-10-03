@@ -42,3 +42,14 @@ def test_internal_exception_maps_to_internal_error(monkeypatch, client):
 def test_validator_failure_never_returns_success(monkeypatch, client):
     monkeypatch.setattr('classshift.service.validate_solution', lambda *a,**k: ValidationResult(False,('bad',),None))
     r=client.post('/api/recover',json={'outages':[{'room_id':'LAB_A','period_ids':['MON_P3']}]}); body=r.get_json(); assert r.status_code==500 and body['status']=='VALIDATOR_FAILURE' and body['validated'] is False
+
+
+def test_unexpected_request_field_is_invalid(client):
+    r=client.post('/api/recover',json={'outages':[],'extra':True})
+    assert r.status_code==400 and r.get_json()['status']=='INVALID_INPUT'
+
+
+def test_request_size_limit(client):
+    payload='{"outages":[],"padding":"' + ('x' * (129 * 1024)) + '"}'
+    r=client.post('/api/recover',data=payload,content_type='application/json')
+    assert r.status_code==413 and r.get_json()['status']=='INVALID_INPUT'

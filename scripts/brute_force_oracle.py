@@ -8,7 +8,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from classshift.domain import Dataset, StepFreeStatus
-from classshift.input_validator import unavailable_pairs
 
 
 def _compatible(lesson, room, unavailable) -> bool:
@@ -29,7 +28,9 @@ def _compatible(lesson, room, unavailable) -> bool:
 
 def brute_force_period(dataset: Dataset, outages, period_id: str) -> tuple[bool, int | None]:
     lessons = [l for l in dataset.lessons if l.period_id == period_id]
-    unavailable = unavailable_pairs(outages)
+    # Deliberately rebuild outage membership here instead of sharing production
+    # eligibility/support helpers; this oracle is an independent correctness check.
+    unavailable = frozenset((outage.room_id, pid) for outage in outages for pid in outage.period_ids)
     options = [[r.id for r in dataset.rooms if _compatible(l, r, unavailable)] for l in lessons]
     if any(not opts for opts in options):
         return False, None

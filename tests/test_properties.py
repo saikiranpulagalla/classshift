@@ -30,3 +30,17 @@ def test_adding_room_feature_cannot_reduce_eligibility(fixture_loader):
 
 def test_input_order_does_not_change_cost(fixture_loader):
     raw=fixture_loader("chain_3.json"); a=run(raw); b=copy.deepcopy(raw); b["rooms"].reverse(); b["lessons"].reverse(); br=run(b); assert br["status"]==a["status"] and br["move_count"]==a["move_count"]
+
+
+def test_adding_outage_cannot_improve_minimum_move_count(fixture_loader):
+    raw=fixture_loader("chain_3.json")
+    baseline=copy.deepcopy(raw); baseline["outages"]=[]
+    a=run(baseline); b=run(raw)
+    assert a["status"]==b["status"]=="OPTIMAL"
+    assert b["move_count"]>=a["move_count"]
+
+
+def test_successful_service_result_is_marked_validated(fixture_loader):
+    result=run(fixture_loader("direct_move.json"))
+    assert result["status"]=="OPTIMAL"
+    assert result["validated"] is True

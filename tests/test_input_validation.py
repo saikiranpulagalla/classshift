@@ -109,3 +109,17 @@ def test_duplicate_outages_are_canonicalized(valid_raw):
     ds=parse_dataset(valid_raw)
     out=parse_outages([{"room_id":"R1","period_ids":["MON_P1"]},{"room_id":"R1","period_ids":["MON_P1"]}],ds)
     assert len(out)==1 and out[0].period_ids==frozenset({"MON_P1"})
+
+
+def test_duplicate_outage_reason_is_order_independent(valid_raw):
+    ds=parse_dataset(valid_raw)
+    a=parse_outages([
+        {"room_id":"R1","period_ids":["MON_P1"],"reason":"Z reason"},
+        {"room_id":"R1","period_ids":["MON_P1"],"reason":"A reason"},
+    ],ds)
+    b=parse_outages([
+        {"room_id":"R1","period_ids":["MON_P1"],"reason":"A reason"},
+        {"room_id":"R1","period_ids":["MON_P1"],"reason":"Z reason"},
+    ],ds)
+    assert a == b
+    assert a[0].reason == "A reason"

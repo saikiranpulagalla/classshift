@@ -2,6 +2,7 @@ $ python -m compileall -q .
 compileall: PASS
 $ node --check static/app.js
 node syntax: PASS
-$ grep production-helper coupling
-independence: PASS
-static safety: PASS
+$ git diff --check
+git diff check: PASS
+independence: PASS via tests/test_release_static.py
+frontend release source safety: PASS via tests/test_release_static.py

@@ -216,8 +216,12 @@ def parse_outages(payload: Any, dataset: Dataset) -> tuple[Outage, ...]:
         if type(reason) is not str:
             raise ValidationError(f"outages[{i}].reason must be a string")
         merged.setdefault(rid, set()).update(clean_periods)
-        if reason.strip() and rid not in reasons:
-            reasons[rid] = reason.strip()
+        cleaned_reason = reason.strip()
+        if cleaned_reason:
+            # Duplicate outages are canonicalized independent of request ordering.
+            previous = reasons.get(rid)
+            if previous is None or cleaned_reason < previous:
+                reasons[rid] = cleaned_reason
     return tuple(Outage(rid, frozenset(sorted(pids)), reasons.get(rid, "")) for rid, pids in sorted(merged.items()))
 
 

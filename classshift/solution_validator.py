@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .domain import Dataset, StepFreeStatus
-from .input_validator import unavailable_pairs
 
 
 @dataclass(frozen=True)
@@ -25,7 +24,9 @@ def validate_solution(dataset: Dataset, outages, assignments: dict[str, str], cl
         errors.append(f"invented lessons: {', '.join(invented)}")
 
     room_by_id = dataset.room_by_id
-    unavailable = unavailable_pairs(outages)
+    # Deliberately compute outage pairs locally: validation must remain independent
+    # from production candidate/eligibility helpers and their supporting logic.
+    unavailable = frozenset((outage.room_id, pid) for outage in outages for pid in outage.period_ids)
     occupancy: set[tuple[str, str]] = set()
     move_count = 0
 
