@@ -25,7 +25,7 @@ ClassShift changes room assignments only. It does not change time/period, teache
 - `classshift/input_validator.py`: strict schema and baseline integrity checks
 - `classshift/candidates.py`: eligible edges plus diagnostic rejection codes
 - `classshift/optimizer.py`: OR-Tools exact min-cost-flow assignment
-- `classshift/solution_validator.py`: deliberately independent correctness check
+- `classshift/solution_validator.py`: deliberately independent correctness check over structured assignment records, preserving duplicate lessons and proposed period IDs until validation
 - `scripts/brute_force_oracle.py`: independent tiny-instance exhaustive oracle
 - `classshift/service.py`: status mapping, period decomposition, validation, explanations
 - `app.py`: thin Flask API/UI host
@@ -41,7 +41,7 @@ Original-room edge cost = 0. Any other eligible room edge cost = 1. OR-Tools min
 ## Statuses
 `OPTIMAL`, `INFEASIBLE`, `INVALID_INPUT`, `SOLVER_ERROR`, `VALIDATOR_FAILURE`, `INTERNAL_ERROR`.
 
-`INFEASIBLE` is reserved for valid inputs where no complete recovery exists. Invalid baseline data is `INVALID_INPUT`; backend/solver failures are never relabeled as infeasibility.
+`INFEASIBLE` is reserved for valid inputs where no complete recovery exists. Invalid baseline data is `INVALID_INPUT`; backend/solver failures are never relabeled as infeasibility. Public 500-class responses are intentionally generic; detailed solver/validator diagnostics stay in server logs.
 
 ## Install
 Target runtime: **Python 3.11**.
@@ -77,7 +77,7 @@ python scripts/verify_release.py
 
 `pytest.ini` pins the repository root on the import path so the documented `pytest -q` command works consistently across launchers.
 
-Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, forced-chain uniqueness, conservative infeasibility explanations, validator corruption, API status separation, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances.
+Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, forced-chain uniqueness, multi-period decomposition, conservative infeasibility explanations, duplicate/period-mutated solver proposals, API status separation, solver-error branches, executable request-race semantics, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances.
 
 ## Demo
 1. Select **Monday · Period 3**.
@@ -90,10 +90,10 @@ Tests cover strict input types, baseline integrity, candidate boundaries, exact-
 ClassShift does not invent a schedule when the constraints cannot be satisfied.
 
 ## Data and privacy
-All bundled demo/fixture data is synthetic. There are no student names, real school records, accounts, secrets, or PII. The prototype accepts only outage selections against the bundled demo timetable through the UI API.
+All bundled demo/fixture data is synthetic. There are no student names, real school records, accounts, secrets, or PII. The prototype accepts only outage selections against the bundled demo timetable through the UI API. `/api/demo` first loads the strict validated domain model and then serializes a canonical whitelist of period, room, and lesson fields; raw JSON keys are never passed through directly.
 
 ## Frontend robustness and accessibility design
-The UI uses semantic controls and tables, visible focus, text plus color for status, focus management for results, a narrow responsive layout, reduced-motion-safe behavior, and generation tokens/AbortController so stale responses cannot overwrite a changed selection. Dynamic content is inserted with safe DOM APIs (`textContent`), not `innerHTML`.
+The UI uses semantic controls and tables, a high-contrast focus indicator, keyboard-focusable horizontal table regions, text plus color for status, focus management for results, a narrow responsive layout, and reduced-motion-safe behavior. A dedicated `RequestGate` owns generation tokens and `AbortController`; its race semantics are executable in a JavaScript runtime so a stale response cannot overwrite a changed/reset selection. Dynamic content is inserted with safe DOM APIs (`textContent`), not HTML-string sinks.
 
 These are implementation design measures, not a claim of formal accessibility certification.
 
@@ -101,7 +101,7 @@ These are implementation design measures, not a claim of formal accessibility ce
 `scripts/benchmark.py` can record measured validation, candidate-generation, solver, validator, and total timings for deterministic **dense, sparse, bottleneck, and near-infeasible** synthetic cases at several sizes into `evidence/benchmark.json`. Do not quote numbers unless that file was produced by an actual run in the environment being discussed.
 
 ## Evidence policy
-Only actual executed evidence belongs in `evidence/`. The release verification script fails on missing critical files, invalid JSON, `debug=True`, unsafe `innerHTML`, or failing pytest. No fabricated benchmark, user-validation, or test claims are included.
+Only actual executed evidence belongs in `evidence/`. The release verifier checks a mandatory test-file manifest plus high-value test function names, so deleting or emptying a critical test cannot silently reduce coverage. It also checks strict fixture/oracle validity, validator/oracle independence, unsafe frontend sinks, request-gate wiring, JavaScript race semantics when Node.js is available, runtime dependencies, Python 3.11, and pytest. Real benchmark evidence is intentionally trackable in Git once generated. No fabricated benchmark, user-validation, or test claims are included.
 
 ## AI disclosure
 See [AI_USAGE.md](AI_USAGE.md). AI was used during development assistance, but no LLM participates in runtime recovery or runtime validation.

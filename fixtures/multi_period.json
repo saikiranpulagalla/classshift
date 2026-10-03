@@ -1,0 +1,21 @@
+{
+  "periods": [
+    {"id": "MON_P1", "label": "Monday · Period 1", "order": 1},
+    {"id": "TUE_P1", "label": "Tuesday · Period 1", "order": 1}
+  ],
+  "rooms": [
+    {"id": "R1", "label": "Room 1", "capacity": 30, "features": ["standard"], "step_free_status": "VERIFIED", "enabled": true},
+    {"id": "R2", "label": "Room 2", "capacity": 30, "features": ["standard"], "step_free_status": "VERIFIED", "enabled": true},
+    {"id": "R3", "label": "Room 3", "capacity": 30, "features": ["standard"], "step_free_status": "VERIFIED", "enabled": true}
+  ],
+  "lessons": [
+    {"id": "A_MON", "label": "A Monday", "period_id": "MON_P1", "original_room_id": "R1", "student_count": 20, "required_features": ["standard"], "requires_step_free": false, "locked": false},
+    {"id": "B_MON", "label": "B Monday", "period_id": "MON_P1", "original_room_id": "R2", "student_count": 20, "required_features": ["standard"], "requires_step_free": false, "locked": false},
+    {"id": "C_TUE", "label": "C Tuesday", "period_id": "TUE_P1", "original_room_id": "R1", "student_count": 20, "required_features": ["standard"], "requires_step_free": false, "locked": false},
+    {"id": "D_TUE", "label": "D Tuesday", "period_id": "TUE_P1", "original_room_id": "R2", "student_count": 20, "required_features": ["standard"], "requires_step_free": false, "locked": false}
+  ],
+  "outages": [
+    {"room_id": "R1", "period_ids": ["MON_P1", "TUE_P1"], "reason": "Synthetic two-period outage"}
+  ],
+  "expected": {"status": "OPTIMAL", "move_count": 2}
+}

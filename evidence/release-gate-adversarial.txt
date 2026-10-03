@@ -1,0 +1,11 @@
+RC4 release-gate adversarial checks — executed in this sandbox
+
+Attack 1: copied the repository to /tmp, deleted tests/test_differential.py, and ran scripts/verify_release.py.
+Observed required failure:
+- missing required file: tests/test_differential.py
+
+Attack 2: copied the repository to /tmp, replaced tests/test_optimizer.py with an empty placeholder, and ran scripts/verify_release.py.
+Observed required failure:
+- tests/test_optimizer.py is missing mandatory release test(s): test_incomplete_optimal_assignment_is_solver_error, test_solver_error_not_infeasible, test_unexpected_solver_status_is_solver_error
+
+These checks demonstrate that the release gate now detects both deletion of a critical test file and replacement of a critical test file with a trivial placeholder.

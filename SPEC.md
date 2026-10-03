@@ -33,12 +33,12 @@ This whole-period assignment is necessary to discover relocation chains that a d
 - `OPTIMAL`: OR-Tools returned a proven optimum and the complete combined assignment passed the independent validator.
 - `INFEASIBLE`: a valid model has no complete constraint-valid assignment.
 - `INVALID_INPUT`: request or baseline data is malformed/invalid.
-- `SOLVER_ERROR`: optimizer exception or non-optimal/non-infeasible solver state.
-- `VALIDATOR_FAILURE`: solver output failed independent validation and is blocked.
+- `SOLVER_ERROR`: optimizer exception or non-optimal/non-infeasible solver state. Public solver-error text is generic; low-level status/exception detail is internal logging only.
+- `VALIDATOR_FAILURE`: solver output failed independent validation and is blocked. Public responses do not expose validator diagnostics.
 - `INTERNAL_ERROR`: unexpected application failure.
 
 ## Independent validator
-Every successful proposal is independently checked without calling production candidate-eligibility logic. It verifies exact lesson preservation, known/enabled/available rooms, capacity, features, step-free metadata, locks, no double booking, and recomputes move count.
+Every successful proposal is independently checked without calling production candidate-eligibility logic. Solver output remains a sequence of immutable assignment records `(lesson_id, period_id, room_id)` until validation, rather than being collapsed into a dictionary first. This preserves duplicate lesson proposals and proposed period IDs so the validator can independently detect duplicates, missing/invented lessons, period mutation, known/enabled/available rooms, capacity, features, step-free metadata, locks, double booking, and false move counts. Only a validated proposal is converted to the public assignment map.
 
 ## Limitations
-The MVP uses synthetic data, whole-period outages, room-only repair, and no cross-period constraints. It is a prototype decision-support tool, not a school information system or automatic publishing system.
+The MVP uses synthetic data, whole-period outages, room-only repair, and no cross-period constraints. Multi-period requests are composed from independently solved period instances and independently validated as one complete proposal; the same physical room may therefore be reused in different periods. It is a prototype decision-support tool, not a school information system or automatic publishing system.

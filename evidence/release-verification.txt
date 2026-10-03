@@ -1,10 +1,13 @@
-- Python 3.11 grammar parse: PASS (26 files)
+- mandatory test manifest: PASS
+- Python 3.11 grammar parse: PASS (30 files)
 - strict demo/fixture validation and brute-force fixture oracle: PASS
 - validator/oracle independence source check: PASS
 - frontend release safety source checks: PASS
-- dependency-free pytest: PASS (........................................................................ [ 90%]
-........                                                                 [100%]
-80 passed in 0.15s)
+- JavaScript request-gate race semantics: PASS
+- dependency-free pytest: PASS (........................................................................ [ 80%]
+..................                                                       [100%]
+90 passed in 0.13s)
+- benchmark evidence: UNVERIFIED/not present
 RELEASE VERIFICATION: FAIL
 - missing required runtime dependency: flask
 - missing required runtime dependency: waitress

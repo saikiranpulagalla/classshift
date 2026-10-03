@@ -4,7 +4,7 @@ import pytest
 
 from classshift.service import recover_from_raw
 
-NAMES=["no_outage.json","direct_move.json","chain_2.json","chain_3.json","capacity_infeasible.json","feature_infeasible.json","locked_infeasible.json","hall_bottleneck.json","multi_outage.json","equal_optimum.json"]
+NAMES=["no_outage.json","direct_move.json","chain_2.json","chain_3.json","capacity_infeasible.json","feature_infeasible.json","locked_infeasible.json","hall_bottleneck.json","multi_outage.json","equal_optimum.json","multi_period.json"]
 
 @pytest.mark.parametrize("name",NAMES)
 def test_golden(name, fixture_loader):

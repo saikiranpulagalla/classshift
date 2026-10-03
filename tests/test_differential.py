@@ -37,7 +37,6 @@ def test_differential_small_random_cases():
         if feasible:
             assert prod.status.value=="OPTIMAL", f"seed={seed}"
             assert prod.move_count==best, f"seed={seed}"
-            full={l.id:l.original_room_id for l in ds.lessons}; full.update(prod.assignments or {})
-            assert validate_solution(ds,out,full,prod.move_count).valid, f"seed={seed}"
+            assert validate_solution(ds,out,prod.assignments or (),prod.move_count).valid, f"seed={seed}"
         else:
             assert prod.status.value=="INFEASIBLE", f"seed={seed}"

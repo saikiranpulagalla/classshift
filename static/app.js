@@ -6,7 +6,7 @@ const State = Object.freeze({
   INVALID_INPUT: 'INVALID_INPUT', ERROR: 'ERROR'
 });
 
-const model = { demo: null, state: State.READY, generation: 0, controller: null };
+const model = { demo: null, state: State.READY, gate: new ClassShiftRequestGate() };
 const $ = (id) => document.getElementById(id);
 
 function setState(next) { model.state = next; }
@@ -20,9 +20,7 @@ function text(tag, value, className = '') {
 function clearNode(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
 function invalidateResults() {
-  model.generation += 1;
-  if (model.controller) model.controller.abort();
-  model.controller = null;
+  model.gate.invalidate();
   $('impactPanel').classList.add('hidden');
   $('resultPanel').classList.add('hidden');
   clearNode($('impactContent')); clearNode($('resultContent'));
@@ -99,7 +97,7 @@ function renderOptimal(result) {
     const card = document.createElement('div'); card.className = 'summary-card'; card.appendChild(text('strong', String(value))); card.appendChild(text('span', label)); summary.appendChild(card);
   }
   root.appendChild(summary);
-  const wrap = document.createElement('div'); wrap.className = 'table-wrap';
+  const wrap = document.createElement('div'); wrap.className = 'table-wrap'; wrap.tabIndex = 0; wrap.setAttribute('aria-label', 'Recovery changes; scroll horizontally if needed');
   const table = document.createElement('table');
   const thead = document.createElement('thead'); const hr = document.createElement('tr');
   for (const label of ['Lesson','Before','After','Why']) { const th = text('th', label); th.scope = 'col'; hr.appendChild(th); }
@@ -125,31 +123,28 @@ function renderFailure(result) {
 }
 
 async function solve() {
+  if (model.state === State.SOLVING) return;
   const rooms = selectedRooms();
   if (!rooms.length) { $('controlError').textContent = 'Select at least one unavailable room.'; return; }
   $('controlError').textContent = ''; previewImpact();
-  const generation = ++model.generation;
-  if (model.controller) model.controller.abort();
-  model.controller = new AbortController();
+  const requestToken = model.gate.begin();
   setState(State.SOLVING); $('solveButton').disabled = true;
-  clearNode($('resultContent')); const waiting = addStatus($('resultContent'), 'warn', 'Finding a constraint-valid recovery…', 'Considering every lesson in the affected period.');
+  clearNode($('resultContent')); addStatus($('resultContent'), 'warn', 'Finding a constraint-valid recovery…', 'Considering every lesson in the affected period.');
   $('resultPanel').classList.remove('hidden');
   try {
-    const response = await fetch('/api/recover', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ outages: rooms.map((room_id) => ({room_id, period_ids:[selectedPeriod()]})) }), signal: model.controller.signal });
+    const response = await fetch('/api/recover', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ outages: rooms.map((room_id) => ({room_id, period_ids:[selectedPeriod()]})) }), signal: requestToken.signal });
     const result = await response.json();
-    if (generation !== model.generation) return;
+    if (!model.gate.isCurrent(requestToken.generation)) return;
     if (result.status === 'OPTIMAL' && result.validated === true) renderOptimal(result); else renderFailure(result);
   } catch (error) {
-    if (error.name === 'AbortError' || generation !== model.generation) return;
+    if (error.name === 'AbortError' || !model.gate.isCurrent(requestToken.generation)) return;
     renderFailure({status:'ERROR'});
   } finally {
-    if (generation === model.generation) { $('solveButton').disabled = false; model.controller = null; }
+    if (model.gate.finish(requestToken.generation)) $('solveButton').disabled = false;
   }
 }
 
 function reset() {
-  if (model.controller) model.controller.abort();
-  model.generation += 1;
   document.querySelectorAll('input[name="outage-room"]').forEach((el) => { el.checked = false; });
   const preferred = model.demo.periods.find((p) => p.id === 'MON_P3'); if (preferred) $('periodSelect').value = preferred.id;
   invalidateResults();

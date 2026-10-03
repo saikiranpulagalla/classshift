@@ -106,9 +106,7 @@ def timed(n: int, m: int, profile: str) -> dict:
 
     validator_valid = None
     if result.status.value == "OPTIMAL" and result.assignments is not None:
-        assignments = {lesson.id: lesson.original_room_id for lesson in dataset.lessons}
-        assignments.update(result.assignments)
-        checked = validate_solution(dataset, outages, assignments, result.move_count)
+        checked = validate_solution(dataset, outages, result.assignments, result.move_count)
         validator_valid = checked.valid
     t4 = perf_counter()
 

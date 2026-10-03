@@ -8,6 +8,7 @@
   --strong: #19324a;
   --accent: #0f62fe;
   --accent-dark: #0b4fc7;
+  --focus: #003a8c;
   --success-bg: #edf8f1;
   --success-border: #7fbf98;
   --warn-bg: #fff8e6;
@@ -43,8 +44,8 @@ fieldset { border: 0; padding: 0; margin: 0; }
 .button.primary:hover { background: var(--accent-dark); }
 .button.secondary { background: #fff; border-color: var(--border); color: var(--strong); }
 .button:disabled { opacity: .55; cursor: not-allowed; }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid rgba(15,98,254,.35); outline-offset: 2px; }
-.table-wrap { overflow-x: auto; }
+button:focus-visible, select:focus-visible, input:focus-visible, .table-wrap:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; border-radius: 4px; }
 table { width: 100%; border-collapse: collapse; min-width: 640px; }
 th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 th { color: var(--muted); font-size: .84rem; text-transform: uppercase; letter-spacing: .04em; }

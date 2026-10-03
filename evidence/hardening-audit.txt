@@ -1,0 +1,11 @@
+RC4 hardening audit — executed in this sandbox
+NOTE: the integration pytest command below uses an ephemeral local API-compatible min-cost-flow test double because real OR-Tools is unavailable. It is not evidence of real OR-Tools execution.
+
+$ PYTHONPATH=/tmp/classshift_fakepkgs:$PYTHONPATH python -m pytest -q tests/test_optimizer.py tests/test_golden_fixtures.py tests/test_properties.py tests/test_differential.py tests/test_multi_period.py tests/test_service_integrity.py
+...............................                                          [100%]
+31 passed in 0.08s
+
+$ PYTHONPATH=/tmp/classshift_fakepkgs:$PYTHONPATH python /tmp/classshift_rc4_stress.py
+CANDIDATES PASS datasets=2000 edges_checked=36181
+VALIDATOR PASS randomized_cases=3000
+SERVICE PASS randomized_cases=1000

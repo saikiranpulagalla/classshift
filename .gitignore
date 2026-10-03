@@ -6,4 +6,3 @@ __pycache__/
 htmlcov/
 .DS_Store
 .env
-evidence/benchmark.json

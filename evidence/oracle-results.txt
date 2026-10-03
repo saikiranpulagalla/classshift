@@ -1,10 +1,11 @@
 capacity_infeasible.json: INFEASIBLE expected INFEASIBLE -> PASS
-chain_2.json: OPTIMAL 2 expected OPTIMAL 2 optimal_count=1 -> PASS
-chain_3.json: OPTIMAL 3 expected OPTIMAL 3 optimal_count=1 -> PASS
-direct_move.json: OPTIMAL 1 expected OPTIMAL 1 optimal_count=1 -> PASS
-equal_optimum.json: OPTIMAL 1 expected OPTIMAL 1 optimal_count=2 -> PASS
+chain_2.json: OPTIMAL 2 expected OPTIMAL 2 optimal_counts=[('MON_P1', 1)] -> PASS
+chain_3.json: OPTIMAL 3 expected OPTIMAL 3 optimal_counts=[('MON_P3', 1)] -> PASS
+direct_move.json: OPTIMAL 1 expected OPTIMAL 1 optimal_counts=[('MON_P1', 1)] -> PASS
+equal_optimum.json: OPTIMAL 1 expected OPTIMAL 1 optimal_counts=[('MON_P1', 2)] -> PASS
 feature_infeasible.json: INFEASIBLE expected INFEASIBLE -> PASS
 hall_bottleneck.json: INFEASIBLE expected INFEASIBLE -> PASS
 locked_infeasible.json: INFEASIBLE expected INFEASIBLE -> PASS
-multi_outage.json: OPTIMAL 2 expected OPTIMAL 2 optimal_count=2 -> PASS
-no_outage.json: OPTIMAL 0 expected OPTIMAL 0 optimal_count=1 -> PASS
+multi_outage.json: OPTIMAL 2 expected OPTIMAL 2 optimal_counts=[('MON_P1', 2)] -> PASS
+multi_period.json: OPTIMAL 2 expected OPTIMAL 2 optimal_counts=[('MON_P1', 1), ('TUE_P1', 1)] -> PASS
+no_outage.json: OPTIMAL 0 expected OPTIMAL 0 optimal_counts=[] -> PASS

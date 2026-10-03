@@ -30,20 +30,33 @@ def test_brute_force_oracle_is_independent_of_production_solver_validation():
     assert not any(any(term in name for term in forbidden) for name in names)
 
 
-def test_frontend_has_no_remote_dependency_or_innerhtml():
+def test_frontend_has_no_remote_dependency_or_dangerous_html_sink():
     text = "\n".join(
         (ROOT / rel).read_text(encoding="utf-8")
-        for rel in ("templates/index.html", "static/styles.css", "static/app.js")
+        for rel in (
+            "templates/index.html",
+            "static/styles.css",
+            "static/request_gate.js",
+            "static/app.js",
+        )
     )
     assert "http://" not in text
     assert "https://" not in text
-    assert ".innerHTML" not in text
+    for sink in (".innerHTML", ".outerHTML", "insertAdjacentHTML", "document.write", "eval("):
+        assert sink not in text
 
 
-def test_frontend_contains_stale_response_defense():
-    js = (ROOT / "static/app.js").read_text(encoding="utf-8")
-    assert "generation" in js
-    assert "AbortController" in js
+def test_frontend_uses_explicit_request_gate_for_stale_response_defense():
+    gate = (ROOT / "static/request_gate.js").read_text(encoding="utf-8")
+    app = (ROOT / "static/app.js").read_text(encoding="utf-8")
+    html = (ROOT / "templates/index.html").read_text(encoding="utf-8")
+    assert "AbortController" in gate
+    assert "generation" in gate
+    assert "ClassShiftRequestGate" in gate
+    assert "model.gate.begin()" in app
+    assert "model.gate.isCurrent" in app
+    assert "model.gate.invalidate()" in app
+    assert html.index("request_gate.js") < html.index("app.js")
 
 
 def test_release_app_source_has_size_limit_and_no_debug_true():
@@ -56,3 +69,38 @@ def test_room_selection_error_is_associated_with_control():
     html = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
     assert '<fieldset aria-describedby="controlError">' in html
     assert 'id="controlError"' in html
+
+
+def test_scrollable_timetable_is_keyboard_focusable():
+    html = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
+    css = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'class="table-wrap" tabindex="0"' in html
+    assert ".table-wrap:focus-visible" in css
+    assert "wrap.tabIndex = 0" in js
+
+
+def test_focus_indicator_uses_opaque_high_contrast_token():
+    css = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+    assert "--focus: #003a8c" in css
+    assert "outline: 3px solid var(--focus)" in css
+
+
+def _relative_luminance(hex_color: str) -> float:
+    values = [int(hex_color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+    linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in values]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast_ratio(a: str, b: str) -> float:
+    la, lb = sorted((_relative_luminance(a), _relative_luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def test_focus_indicator_contrast_exceeds_three_to_one_against_white():
+    assert _contrast_ratio("#003a8c", "#ffffff") >= 3.0
+
+
+def test_real_benchmark_evidence_is_not_gitignored():
+    gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "evidence/benchmark.json" not in gitignore

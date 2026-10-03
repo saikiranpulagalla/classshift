@@ -57,6 +57,21 @@ class Outage:
 
 
 @dataclass(frozen=True)
+class ProposedAssignment:
+    """A solver proposal before independent validation.
+
+    Keeping period_id in the proposal is deliberate: it lets the independent
+    validator prove that the solver/service did not mutate lesson time. A
+    sequence of these records also preserves duplicate lesson assignments so
+    the validator can detect them instead of a dict silently overwriting one.
+    """
+
+    lesson_id: str
+    period_id: str
+    room_id: str
+
+
+@dataclass(frozen=True)
 class Dataset:
     periods: Tuple[Period, ...]
     rooms: Tuple[Room, ...]
