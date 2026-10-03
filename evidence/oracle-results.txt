@@ -1,0 +1,10 @@
+capacity_infeasible.json: INFEASIBLE -> PASS
+chain_2.json: OPTIMAL 2 -> PASS
+chain_3.json: OPTIMAL 3 -> PASS
+direct_move.json: OPTIMAL 1 -> PASS
+equal_optimum.json: OPTIMAL 1 -> PASS
+feature_infeasible.json: INFEASIBLE -> PASS
+hall_bottleneck.json: INFEASIBLE -> PASS
+locked_infeasible.json: INFEASIBLE -> PASS
+multi_outage.json: OPTIMAL 2 -> PASS
+no_outage.json: OPTIMAL 0 -> PASS

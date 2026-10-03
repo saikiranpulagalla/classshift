@@ -1,0 +1,5 @@
+RELEASE VERIFICATION: FAIL
+- missing required runtime dependency: flask
+- missing required runtime dependency: waitress
+- missing required runtime dependency: ortools
+- release target requires Python 3.11; running 3.13.5
