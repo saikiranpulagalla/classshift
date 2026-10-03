@@ -29,6 +29,8 @@ OFFLINE_TESTS = [
     "tests/test_solution_validator.py",
     "tests/test_release_static.py",
     "tests/test_benchmark_cases.py",
+    "tests/test_explain.py",
+    "tests/test_oracle.py",
 ]
 
 
@@ -62,11 +64,25 @@ def main() -> int:
     if missing_fixtures:
         failures.append(f"missing required fixture(s): {', '.join(missing_fixtures)}")
 
+    # Parse every project Python source using Python 3.11 grammar even when the
+    # current interpreter is newer. This is a syntax-compatibility check only;
+    # the real Python 3.11 runtime gate below remains authoritative.
+    try:
+        python_files = [
+            path for path in ROOT.rglob("*.py")
+            if not any(part in {".git", ".venv", "__pycache__"} for part in path.parts)
+        ]
+        for path in python_files:
+            ast.parse(path.read_text(encoding="utf-8"), filename=str(path), feature_version=(3, 11))
+        notes.append(f"Python 3.11 grammar parse: PASS ({len(python_files)} files)")
+    except Exception as exc:
+        failures.append(f"Python 3.11 grammar parse failed: {type(exc).__name__}: {exc}")
+
     # JSON syntax and strict domain validation are dependency-free and should run
     # even if Flask/OR-Tools cannot be installed in the current environment.
     try:
         from classshift.input_validator import parse_dataset, parse_outages
-        from scripts.brute_force_oracle import brute_force_period
+        from scripts.brute_force_oracle import brute_force_period, brute_force_period_details
 
         demo_raw = json.loads((ROOT / "data/demo_school.json").read_text(encoding="utf-8"))
         parse_dataset(demo_raw)
@@ -90,6 +106,10 @@ def main() -> int:
             if expected.get("status") == "OPTIMAL":
                 if not feasible or total_moves != expected.get("move_count"):
                     failures.append(f"fixture oracle mismatch: {path.name}")
+                if path.name in {"chain_2.json", "chain_3.json"} and len(periods) == 1:
+                    _ok, _best, optimal_count = brute_force_period_details(dataset, outages, periods[0])
+                    if optimal_count != 1:
+                        failures.append(f"fixture is not a unique minimum recovery: {path.name}")
             elif expected.get("status") == "INFEASIBLE":
                 if feasible:
                     failures.append(f"fixture expected infeasible but oracle found recovery: {path.name}")

@@ -1,0 +1,76 @@
+
+==================================== ERRORS ====================================
+______________________ ERROR collecting tests/test_api.py ______________________
+ImportError while importing test module '/mnt/data/classshift_continue/classshift/tests/test_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_api.py:5: in <module>
+    from app import create_app
+app.py:5: in <module>
+    from flask import Flask, jsonify, render_template, request
+E   ModuleNotFoundError: No module named 'flask'
+_________________ ERROR collecting tests/test_differential.py __________________
+ImportError while importing test module '/mnt/data/classshift_continue/classshift/tests/test_differential.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_differential.py:6: in <module>
+    from classshift.optimizer import optimize_period
+classshift/optimizer.py:5: in <module>
+    from ortools.graph.python import min_cost_flow
+E   ModuleNotFoundError: No module named 'ortools'
+________________ ERROR collecting tests/test_golden_fixtures.py ________________
+ImportError while importing test module '/mnt/data/classshift_continue/classshift/tests/test_golden_fixtures.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_golden_fixtures.py:5: in <module>
+    from classshift.service import recover_from_raw
+classshift/service.py:8: in <module>
+    from .optimizer import optimize_period
+classshift/optimizer.py:5: in <module>
+    from ortools.graph.python import min_cost_flow
+E   ModuleNotFoundError: No module named 'ortools'
+___________________ ERROR collecting tests/test_optimizer.py ___________________
+ImportError while importing test module '/mnt/data/classshift_continue/classshift/tests/test_optimizer.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optimizer.py:4: in <module>
+    from classshift.optimizer import optimize_period
+classshift/optimizer.py:5: in <module>
+    from ortools.graph.python import min_cost_flow
+E   ModuleNotFoundError: No module named 'ortools'
+__________________ ERROR collecting tests/test_properties.py ___________________
+ImportError while importing test module '/mnt/data/classshift_continue/classshift/tests/test_properties.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_properties.py:4: in <module>
+    from classshift.service import recover_from_raw
+classshift/service.py:8: in <module>
+    from .optimizer import optimize_period
+classshift/optimizer.py:5: in <module>
+    from ortools.graph.python import min_cost_flow
+E   ModuleNotFoundError: No module named 'ortools'
+=========================== short test summary info ============================
+ERROR tests/test_api.py
+ERROR tests/test_differential.py
+ERROR tests/test_golden_fixtures.py
+ERROR tests/test_optimizer.py
+ERROR tests/test_properties.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 5 errors during collection !!!!!!!!!!!!!!!!!!!!
+5 errors in 0.30s
+
+EXIT CODE: 2

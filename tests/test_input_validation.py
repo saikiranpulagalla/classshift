@@ -123,3 +123,44 @@ def test_duplicate_outage_reason_is_order_independent(valid_raw):
     ],ds)
     assert a == b
     assert a[0].reason == "A reason"
+
+
+def test_unexpected_dataset_field_is_rejected(valid_raw):
+    d = copy.deepcopy(valid_raw)
+    d["unexpected"] = True
+    with pytest.raises(ValidationError):
+        parse_dataset(d)
+
+
+def test_unexpected_room_field_is_rejected(valid_raw):
+    d = copy.deepcopy(valid_raw)
+    d["rooms"][0]["legacy_step_free"] = True
+    with pytest.raises(ValidationError):
+        parse_dataset(d)
+
+
+@pytest.mark.parametrize("field", ["requires_step_free", "locked"])
+def test_lesson_boolean_fields_are_strict(valid_raw, field):
+    d = copy.deepcopy(valid_raw)
+    d["lessons"][0][field] = "false"
+    with pytest.raises(ValidationError):
+        parse_dataset(d)
+
+
+def test_period_order_rejects_bool(valid_raw):
+    d = copy.deepcopy(valid_raw)
+    d["periods"][0]["order"] = True
+    with pytest.raises(ValidationError):
+        parse_dataset(d)
+
+
+def test_outage_empty_period_list_is_rejected(valid_raw):
+    ds = parse_dataset(valid_raw)
+    with pytest.raises(ValidationError):
+        parse_outages([{"room_id": "R1", "period_ids": []}], ds)
+
+
+def test_outage_reason_must_be_string(valid_raw):
+    ds = parse_dataset(valid_raw)
+    with pytest.raises(ValidationError):
+        parse_outages([{"room_id": "R1", "period_ids": ["MON_P1"], "reason": 123}], ds)

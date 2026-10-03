@@ -62,3 +62,11 @@ def test_disabled_room_rejected(fixture_loader):
     raw=fixture_loader("direct_move.json"); raw["rooms"].append({"id":"R3","label":"R3","capacity":30,"features":[],"step_free_status":"VERIFIED","enabled":False})
     ds,out=parse_case(raw); g=build_candidate_graph(ds,out,"MON_P1")
     assert RejectionCode.ROOM_DISABLED in g.rejected["A"]["R3"]
+
+
+def test_outage_reason_does_not_change_candidate_logic(fixture_loader):
+    raw = fixture_loader("direct_move.json")
+    ds = parse_dataset({k: v for k, v in raw.items() if k in {"periods", "rooms", "lessons"}})
+    out_a = parse_outages([{"room_id": "R1", "period_ids": ["MON_P1"], "reason": "HVAC unavailable"}], ds)
+    out_b = parse_outages([{"room_id": "R1", "period_ids": ["MON_P1"], "reason": "any other informational text"}], ds)
+    assert build_candidate_graph(ds, out_a, "MON_P1") == build_candidate_graph(ds, out_b, "MON_P1")

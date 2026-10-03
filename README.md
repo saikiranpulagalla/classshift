@@ -77,7 +77,7 @@ python scripts/verify_release.py
 
 `pytest.ini` pins the repository root on the import path so the documented `pytest -q` command works consistently across launchers.
 
-Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, validator corruption, API status separation, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances.
+Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, forced-chain uniqueness, conservative infeasibility explanations, validator corruption, API status separation, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances.
 
 ## Demo
 1. Select **Monday · Period 3**.
@@ -85,7 +85,7 @@ Tests cover strict input types, baseline integrity, candidate boundaries, exact-
 3. Preview impact: Chemistry is directly affected.
 4. Find recovery.
 5. Review the three-step chain and validation state.
-6. For an infeasible example, select Monday · Period 1 and mark both `ART_1` and `ROOM_D` unavailable; the system refuses to weaken hard constraints.
+6. For an infeasible example, select Monday · Period 1 and mark `ART_1` unavailable; Art 9 requires the synthetic `art_sink` feature, so no valid replacement exists and the system refuses to weaken hard constraints.
 
 ClassShift does not invent a schedule when the constraints cannot be satisfied.
 

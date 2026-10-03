@@ -131,6 +131,19 @@ def main() -> int:
     import ortools
 
     cases = [timed(n, m, profile) for n, m in SIZES for profile in PROFILES]
+    for case in cases:
+        expected_status = "INFEASIBLE" if case["profile"] == "near_infeasible" else "OPTIMAL"
+        if case["status"] != expected_status:
+            raise RuntimeError(
+                f"benchmark case {case['profile']} {case['lessons']}/{case['rooms']} "
+                f"returned {case['status']} instead of {expected_status}"
+            )
+        if case["status"] == "OPTIMAL" and case["validator_valid"] is not True:
+            raise RuntimeError(
+                f"benchmark case {case['profile']} {case['lessons']}/{case['rooms']} "
+                "did not pass the independent validator"
+            )
+
     data = {
         "environment": {
             "os": platform.platform(),

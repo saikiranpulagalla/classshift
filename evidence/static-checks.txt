@@ -1,8 +1,9 @@
-$ python -m compileall -q .
+$ python -m compileall -q app.py classshift scripts tests
 compileall: PASS
 $ node --check static/app.js
 node syntax: PASS
 $ git diff --check
 git diff check: PASS
-independence: PASS via tests/test_release_static.py
-frontend release source safety: PASS via tests/test_release_static.py
+Python 3.11 grammar parse: PASS via scripts/verify_release.py
+validator/oracle independence: PASS via scripts/verify_release.py and tests/test_release_static.py
+frontend release source safety: PASS via scripts/verify_release.py and tests/test_release_static.py

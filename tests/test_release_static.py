@@ -50,3 +50,9 @@ def test_release_app_source_has_size_limit_and_no_debug_true():
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert "MAX_CONTENT_LENGTH" in source
     assert "debug=True" not in source
+
+
+def test_room_selection_error_is_associated_with_control():
+    html = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
+    assert '<fieldset aria-describedby="controlError">' in html
+    assert 'id="controlError"' in html
