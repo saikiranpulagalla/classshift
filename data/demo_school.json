@@ -1,0 +1,173 @@
+{
+  "periods": [
+    {
+      "id": "MON_P1",
+      "label": "Monday \u00b7 Period 1",
+      "order": 1
+    },
+    {
+      "id": "MON_P3",
+      "label": "Monday \u00b7 Period 3",
+      "order": 3
+    },
+    {
+      "id": "TUE_P1",
+      "label": "Tuesday \u00b7 Period 1",
+      "order": 1
+    }
+  ],
+  "rooms": [
+    {
+      "id": "LAB_A",
+      "label": "Science Lab A",
+      "capacity": 30,
+      "features": [
+        "chem_lab",
+        "projector"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "LAB_B",
+      "label": "Science Lab B",
+      "capacity": 30,
+      "features": [
+        "chem_lab",
+        "bio_lab",
+        "projector"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "LAB_C",
+      "label": "Science Lab C",
+      "capacity": 30,
+      "features": [
+        "bio_lab",
+        "physics_lab",
+        "projector"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "ROOM_D",
+      "label": "Room D",
+      "capacity": 32,
+      "features": [
+        "physics_lab",
+        "projector"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "ROOM_E",
+      "label": "Room E",
+      "capacity": 28,
+      "features": [
+        "projector"
+      ],
+      "step_free_status": "UNKNOWN",
+      "enabled": true
+    },
+    {
+      "id": "ART_1",
+      "label": "Art Studio",
+      "capacity": 24,
+      "features": [
+        "art_sink"
+      ],
+      "step_free_status": "NOT_VERIFIED",
+      "enabled": true
+    }
+  ],
+  "lessons": [
+    {
+      "id": "ENG_9_MON_P1",
+      "label": "English 9",
+      "period_id": "MON_P1",
+      "original_room_id": "ROOM_D",
+      "student_count": 27,
+      "required_features": [
+        "projector"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "ART_9_MON_P1",
+      "label": "Art 9",
+      "period_id": "MON_P1",
+      "original_room_id": "ART_1",
+      "student_count": 22,
+      "required_features": [
+        "art_sink"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "CHEM_10_MON_P3",
+      "label": "Chemistry 10",
+      "period_id": "MON_P3",
+      "original_room_id": "LAB_A",
+      "student_count": 28,
+      "required_features": [
+        "chem_lab"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "BIO_10_MON_P3",
+      "label": "Biology 10",
+      "period_id": "MON_P3",
+      "original_room_id": "LAB_B",
+      "student_count": 26,
+      "required_features": [
+        "bio_lab"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "PHYS_10_MON_P3",
+      "label": "Physics 10",
+      "period_id": "MON_P3",
+      "original_room_id": "LAB_C",
+      "student_count": 25,
+      "required_features": [
+        "physics_lab"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "MATH_11_TUE_P1",
+      "label": "Mathematics 11",
+      "period_id": "TUE_P1",
+      "original_room_id": "ROOM_D",
+      "student_count": 30,
+      "required_features": [
+        "projector"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "SUPPORT_TUE_P1",
+      "label": "Learning Support",
+      "period_id": "TUE_P1",
+      "original_room_id": "ROOM_E",
+      "student_count": 20,
+      "required_features": [
+        "projector"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "periods": [
+    {
+      "id": "MON_P1",
+      "label": "Monday \u00b7 Period 1",
+      "order": 1
+    }
+  ],
+  "rooms": [
+    {
+      "id": "R1",
+      "label": "R1",
+      "capacity": 30,
+      "features": [],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "R2",
+      "label": "R2",
+      "capacity": 30,
+      "features": [],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "R3",
+      "label": "R3",
+      "capacity": 30,
+      "features": [],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    }
+  ],
+  "lessons": [
+    {
+      "id": "A",
+      "label": "A",
+      "period_id": "MON_P1",
+      "original_room_id": "R1",
+      "student_count": 20,
+      "required_features": [],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "B",
+      "label": "B",
+      "period_id": "MON_P1",
+      "original_room_id": "R2",
+      "student_count": 20,
+      "required_features": [],
+      "requires_step_free": false,
+      "locked": false
+    }
+  ],
+  "outages": [],
+  "expected": {
+    "status": "OPTIMAL",
+    "move_count": 0
+  }
+}

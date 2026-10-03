@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClassShift</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Decision support · Synthetic demo</p>
+        <h1>ClassShift</h1>
+        <p class="subtitle">Minimum-disruption classroom recovery</p>
+      </div>
+      <div class="principle">Repair the room assignment, not the school day.</div>
+    </header>
+
+    <section class="panel" aria-labelledby="controls-title">
+      <div class="section-heading">
+        <div>
+          <p class="step">1 · Describe the disruption</p>
+          <h2 id="controls-title">Choose a period and unavailable rooms</h2>
+        </div>
+        <button id="resetButton" class="button secondary" type="button">Reset</button>
+      </div>
+
+      <div class="controls-grid">
+        <div>
+          <label for="periodSelect">Scheduled period</label>
+          <select id="periodSelect"></select>
+        </div>
+        <fieldset>
+          <legend>Unavailable rooms</legend>
+          <div id="roomOptions" class="room-options"></div>
+        </fieldset>
+      </div>
+
+      <div class="actions">
+        <button id="previewButton" class="button secondary" type="button">Preview impact</button>
+        <button id="solveButton" class="button primary" type="button">Find recovery plan</button>
+      </div>
+      <p id="controlError" class="control-error" role="alert"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="timetable-title">
+      <div class="section-heading">
+        <div>
+          <p class="step">Current synthetic timetable</p>
+          <h2 id="timetable-title">Lessons in the selected period</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Lesson</th><th scope="col">Room</th><th scope="col">Students</th><th scope="col">Requirements</th></tr></thead>
+          <tbody id="timetableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="impactPanel" class="panel hidden" aria-labelledby="impact-title">
+      <p class="step">2 · Direct impact</p>
+      <h2 id="impact-title">Preview</h2>
+      <div id="impactContent"></div>
+    </section>
+
+    <section id="resultPanel" class="panel hidden" aria-live="polite" aria-atomic="false">
+      <div id="resultContent"></div>
+    </section>
+
+    <footer>
+      ClassShift is a room-recovery prototype. It does not auto-publish changes or claim real-world accessibility compliance.
+    </footer>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

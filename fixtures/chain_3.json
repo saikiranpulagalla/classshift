@@ -1,0 +1,103 @@
+{
+  "periods": [
+    {
+      "id": "MON_P3",
+      "label": "Monday \u00b7 Period 3",
+      "order": 3
+    }
+  ],
+  "rooms": [
+    {
+      "id": "LAB_A",
+      "label": "Science Lab A",
+      "capacity": 30,
+      "features": [
+        "chem_lab"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "LAB_B",
+      "label": "Science Lab B",
+      "capacity": 30,
+      "features": [
+        "chem_lab",
+        "bio_lab"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "LAB_C",
+      "label": "Science Lab C",
+      "capacity": 30,
+      "features": [
+        "bio_lab",
+        "physics_lab"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    },
+    {
+      "id": "ROOM_D",
+      "label": "Room D",
+      "capacity": 30,
+      "features": [
+        "physics_lab"
+      ],
+      "step_free_status": "VERIFIED",
+      "enabled": true
+    }
+  ],
+  "lessons": [
+    {
+      "id": "CHEM_10_MON_P3",
+      "label": "Chemistry 10",
+      "period_id": "MON_P3",
+      "original_room_id": "LAB_A",
+      "student_count": 28,
+      "required_features": [
+        "chem_lab"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "BIO_10_MON_P3",
+      "label": "Biology 10",
+      "period_id": "MON_P3",
+      "original_room_id": "LAB_B",
+      "student_count": 26,
+      "required_features": [
+        "bio_lab"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    },
+    {
+      "id": "PHYS_10_MON_P3",
+      "label": "Physics 10",
+      "period_id": "MON_P3",
+      "original_room_id": "LAB_C",
+      "student_count": 25,
+      "required_features": [
+        "physics_lab"
+      ],
+      "requires_step_free": false,
+      "locked": false
+    }
+  ],
+  "outages": [
+    {
+      "room_id": "LAB_A",
+      "period_ids": [
+        "MON_P3"
+      ]
+    }
+  ],
+  "expected": {
+    "status": "OPTIMAL",
+    "move_count": 3
+  }
+}
