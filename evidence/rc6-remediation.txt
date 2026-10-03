@@ -14,9 +14,17 @@ Dependency-free regression:
 - `node tests/js/test_request_gate.js`
 - Result: PASS.
 
-Target-runtime attempt:
-- `py -0p` reported no installed Python installations.
-- The available interpreter is Python 3.12.0, not the required Python 3.11.
-- Flask 3.0.3 is installed; Waitress and OR-Tools are unavailable.
-- Therefore real OR-Tools, full pytest, API/Waitress, browser, and benchmark
-  evidence are not claimed by this file.
+Target-runtime verification:
+- A user-scoped Python 3.11.9 installation was provisioned and an isolated
+  project `.venv` was created from it.
+- Installed: Flask 3.1.3, Waitress 3.0.2, OR-Tools 9.15.6755, pytest 9.1.1.
+- Real OR-Tools focused suites: 61 passed.
+- Full suite: 153 passed.
+- `scripts/verify_release.py`: PASS before tagging while intentionally untagged.
+- Waitress localhost smoke: `/`, `/api/demo`, primary three-step chain,
+  genuine infeasibility, invalid input, and wrong content type all returned
+  the expected HTTP and public status values.
+- `scripts/benchmark.py`: completed 16 measured deterministic cases; results
+  are stored in `evidence/benchmark.json`.
+- Browser automation remains unverified because Playwright/Chromium are not
+  installed; Node request-gate execution passed.
