@@ -1,3 +1,4 @@
-........................................................................ [ 80%]
-..................                                                       [100%]
-90 passed in 0.14s
+$ python -m pytest -q tests/test_input_validation.py tests/test_loader.py tests/test_candidates.py tests/test_solution_validator.py tests/test_release_static.py tests/test_benchmark_cases.py tests/test_explain.py tests/test_oracle.py tests/test_frontend_race.py
+........................................................................ [ 77%]
+.....................                                                    [100%]
+93 passed in 0.14s

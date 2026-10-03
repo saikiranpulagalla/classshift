@@ -6,5 +6,7 @@ $ node --check static/app.js
 app.js syntax: PASS
 $ node tests/js/test_request_gate.js
 request gate race semantics: PASS
+$ python 3.11 grammar parse (via ast feature_version)
+Python 3.11 grammar parse: PASS (31 files)
 $ git diff --check
 git diff check: PASS

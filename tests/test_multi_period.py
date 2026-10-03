@@ -23,3 +23,17 @@ def test_multi_period_move_records_keep_original_periods(fixture_loader):
     result = recover_from_raw(dataset, raw["outages"])
     period_by_lesson = {move["lesson_id"]: move["period_id"] for move in result["moves"]}
     assert period_by_lesson == {"A_MON": "MON_P1", "C_TUE": "TUE_P1"}
+
+
+def test_multi_period_request_is_infeasible_if_either_period_cannot_recover(fixture_loader):
+    raw = fixture_loader("multi_period.json")
+    # Baseline remains valid: the Tuesday lesson is simply locked to R1. Once
+    # R1 is unavailable on Tuesday, that one affected period is infeasible.
+    for lesson in raw["lessons"]:
+        if lesson["id"] == "C_TUE":
+            lesson["locked"] = True
+    dataset = {k: raw[k] for k in ("periods", "rooms", "lessons")}
+    result = recover_from_raw(dataset, raw["outages"])
+    assert result["status"] == "INFEASIBLE"
+    assert result["validated"] is False
+    assert "assignments" not in result

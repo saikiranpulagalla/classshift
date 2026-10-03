@@ -29,4 +29,24 @@ const third = gate.begin();
 assert(gate.finish(third.generation) === true, 'current request should own cleanup');
 assert(gate.controller === null, 'current cleanup should release controller');
 
+
+// Simulate the application response-commit pattern. Even if an old request
+// resolves after a newer request, the stale generation must never render.
+const rendered = [];
+function commitIfCurrent(token, label) {
+  if (!gate.isCurrent(token.generation)) return false;
+  rendered.push(label);
+  return true;
+}
+const requestA = gate.begin();
+const requestB = gate.begin();
+assert(commitIfCurrent(requestB, 'B') === true, 'new request B should render');
+assert(commitIfCurrent(requestA, 'A') === false, 'late stale request A must not render');
+assert(rendered.join(',') === 'B', 'stale response must not overwrite current result');
+
+const requestC = gate.begin();
+gate.invalidate();
+assert(commitIfCurrent(requestC, 'C') === false, 'response after reset/input change must not render');
+assert(rendered.join(',') === 'B', 'reset-stale response must leave current rendered history unchanged');
+
 process.stdout.write('request gate race semantics: PASS\n');

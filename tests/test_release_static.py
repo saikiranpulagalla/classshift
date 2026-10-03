@@ -104,3 +104,40 @@ def test_focus_indicator_contrast_exceeds_three_to_one_against_white():
 def test_real_benchmark_evidence_is_not_gitignored():
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "evidence/benchmark.json" not in gitignore
+
+
+def test_release_verifier_manifest_covers_dependency_bound_critical_tests():
+    from scripts.verify_release import REQUIRED_TEST_FILES, MANDATORY_TEST_FUNCTIONS
+
+    critical_files = {
+        "tests/test_api.py",
+        "tests/test_optimizer.py",
+        "tests/test_differential.py",
+        "tests/test_golden_fixtures.py",
+        "tests/test_properties.py",
+        "tests/test_multi_period.py",
+        "tests/test_service_integrity.py",
+    }
+    assert critical_files <= REQUIRED_TEST_FILES
+    assert {
+        "tests/test_api.py",
+        "tests/test_optimizer.py",
+        "tests/test_differential.py",
+        "tests/test_golden_fixtures.py",
+        "tests/test_properties.py",
+        "tests/test_multi_period.py",
+        "tests/test_service_integrity.py",
+    } <= set(MANDATORY_TEST_FUNCTIONS)
+
+
+def test_input_changes_are_wired_to_clear_and_invalidate_results():
+    app = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    assert "model.gate.invalidate();" in app
+    assert "clearNode($('resultContent'))" in app
+    assert "input.addEventListener('change', invalidateResults)" in app
+    assert "$('periodSelect').addEventListener('change', invalidateResults)" in app
+
+
+def test_room_grid_can_shrink_below_nominal_card_width_for_zoom_reflow():
+    css = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+    assert "minmax(min(190px, 100%), 1fr)" in css

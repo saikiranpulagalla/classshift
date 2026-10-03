@@ -1,0 +1,2 @@
+$ python scripts/browser_smoke.py
+BROWSER_SMOKE_PASS: stale-race reset-clear keyboard-focus 400px/200px-reflow focus-visible

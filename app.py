@@ -61,18 +61,32 @@ def create_app() -> Flask:
                 "validated": False,
                 "message": "Request must contain only the outages field.",
             }), 400
+        # Loading the bundled server dataset and validating the user request are
+        # deliberately separate trust boundaries. A malformed server fixture is
+        # an INTERNAL_ERROR, never user INVALID_INPUT, and its diagnostics stay
+        # in logs.
         try:
             dataset = load_dataset(DEMO_PATH)
+        except Exception:
+            LOGGER.exception("Failed to load validated synthetic recovery dataset")
+            return _internal_error_response()
+
+        try:
             outages = parse_outages(body["outages"], dataset)
-            result = recover(dataset, outages)
         except ValidationError as exc:
-            result = {
+            return jsonify({
                 "status": PublicStatus.INVALID_INPUT.value,
                 "validated": False,
                 "message": str(exc),
-            }
+            }), 400
         except Exception:
-            LOGGER.exception("Unhandled recovery API error")
+            LOGGER.exception("Unexpected outage-validation failure")
+            return _internal_error_response()
+
+        try:
+            result = recover(dataset, outages)
+        except Exception:
+            LOGGER.exception("Unhandled recovery service error")
             return _internal_error_response()
 
         if result["status"] in {PublicStatus.OPTIMAL.value, PublicStatus.INFEASIBLE.value}:

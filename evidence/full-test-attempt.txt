@@ -1,3 +1,4 @@
+$ pytest -q
 
 ==================================== ERRORS ====================================
 ______________________ ERROR collecting tests/test_api.py ______________________
@@ -99,4 +100,5 @@ ERROR tests/test_optimizer.py
 ERROR tests/test_properties.py
 ERROR tests/test_service_integrity.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 7 errors during collection !!!!!!!!!!!!!!!!!!!!
-7 errors in 0.16s
+7 errors in 0.17s
+EXIT_CODE=2

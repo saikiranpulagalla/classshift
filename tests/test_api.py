@@ -37,6 +37,40 @@ def test_demo_loader_failure_is_generic_500(monkeypatch, client):
     assert "secret" not in response.get_data(as_text=True)
 
 
+def test_recover_server_dataset_validation_failure_is_generic_500(monkeypatch, client):
+    from classshift.input_validator import ValidationError
+
+    monkeypatch.setattr(
+        "app.load_dataset",
+        lambda *_: (_ for _ in ()).throw(ValidationError("secret baseline detail")),
+    )
+    response = client.post("/api/recover", json={"outages": []})
+    body = response.get_json()
+    assert response.status_code == 500
+    assert body == {
+        "status": "INTERNAL_ERROR",
+        "validated": False,
+        "message": "The server could not process the request.",
+    }
+    assert "secret baseline" not in response.get_data(as_text=True)
+
+
+def test_unexpected_outage_validation_failure_is_generic_500(monkeypatch, client):
+    monkeypatch.setattr(
+        "app.parse_outages",
+        lambda *_: (_ for _ in ()).throw(RuntimeError("secret validator implementation")),
+    )
+    response = client.post("/api/recover", json={"outages": []})
+    body = response.get_json()
+    assert response.status_code == 500
+    assert body == {
+        "status": "INTERNAL_ERROR",
+        "validated": False,
+        "message": "The server could not process the request.",
+    }
+    assert "secret validator" not in response.get_data(as_text=True)
+
+
 def test_valid_optimal(client):
     response = client.post(
         "/api/recover",

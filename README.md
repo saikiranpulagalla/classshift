@@ -77,7 +77,7 @@ python scripts/verify_release.py
 
 `pytest.ini` pins the repository root on the import path so the documented `pytest -q` command works consistently across launchers.
 
-Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, forced-chain uniqueness, multi-period decomposition, conservative infeasibility explanations, duplicate/period-mutated solver proposals, API status separation, solver-error branches, executable request-race semantics, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances.
+Tests cover strict input types, baseline integrity, candidate boundaries, exact-capacity behavior, outages, locks, step-free metadata, golden fixtures, forced-chain uniqueness, multi-period decomposition, conservative infeasibility explanations, duplicate/period-mutated solver proposals, API status separation, solver-error branches, executable request-race semantics, metamorphic properties, and OR-Tools-vs-brute-force differential checks on tiny deterministic instances. When Playwright and Chromium are available, `python scripts/browser_smoke.py` additionally executes the real frontend JavaScript/CSS against a controlled in-page stub backend to test stale-response suppression, reset/input clearing, keyboard focus, and narrow/reflow behavior without changing the runtime stack.
 
 ## Demo
 1. Select **Monday · Period 3**.
@@ -101,7 +101,7 @@ These are implementation design measures, not a claim of formal accessibility ce
 `scripts/benchmark.py` can record measured validation, candidate-generation, solver, validator, and total timings for deterministic **dense, sparse, bottleneck, and near-infeasible** synthetic cases at several sizes into `evidence/benchmark.json`. Do not quote numbers unless that file was produced by an actual run in the environment being discussed.
 
 ## Evidence policy
-Only actual executed evidence belongs in `evidence/`. The release verifier checks a mandatory test-file manifest plus high-value test function names, so deleting or emptying a critical test cannot silently reduce coverage. It also checks strict fixture/oracle validity, validator/oracle independence, unsafe frontend sinks, request-gate wiring, JavaScript race semantics when Node.js is available, runtime dependencies, Python 3.11, and pytest. Real benchmark evidence is intentionally trackable in Git once generated. No fabricated benchmark, user-validation, or test claims are included.
+Only actual executed evidence belongs in `evidence/`. The release verifier checks a mandatory test-file manifest plus high-value test function names, so deleting or emptying a critical test cannot silently reduce coverage. It also checks strict fixture/oracle validity, validator/oracle independence, unsafe frontend sinks, request-gate wiring, JavaScript race semantics when Node.js is available, the browser frontend smoke when Playwright/Chromium are available, required runtime versions, Python 3.11, and pytest. Real benchmark evidence is intentionally trackable in Git once generated. No fabricated benchmark, user-validation, or test claims are included.
 
 ## AI disclosure
 See [AI_USAGE.md](AI_USAGE.md). AI was used during development assistance, but no LLM participates in runtime recovery or runtime validation.

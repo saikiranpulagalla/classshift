@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+from importlib import metadata
 import json
 from pathlib import Path
 import shutil
@@ -17,7 +18,7 @@ REQUIRED_FILES = {
     "classshift/domain.py", "classshift/loader.py", "classshift/input_validator.py",
     "classshift/candidates.py", "classshift/optimizer.py", "classshift/solution_validator.py",
     "classshift/explain.py", "classshift/service.py", "scripts/brute_force_oracle.py",
-    "scripts/benchmark.py", "scripts/verify_release.py", "data/demo_school.json",
+    "scripts/benchmark.py", "scripts/browser_smoke.py", "scripts/verify_release.py", "data/demo_school.json",
     "templates/index.html", "static/styles.css", "static/request_gate.js", "static/app.js",
 }
 
@@ -68,12 +69,15 @@ MANDATORY_TEST_FUNCTIONS = {
         "test_valid_infeasible",
         "test_validator_failure_never_returns_success_or_internal_diagnostics",
         "test_solver_error_does_not_leak_solver_diagnostic",
+        "test_recover_server_dataset_validation_failure_is_generic_500",
+        "test_unexpected_outage_validation_failure_is_generic_500",
     },
     "tests/test_differential.py": {"test_differential_small_random_cases"},
     "tests/test_golden_fixtures.py": {"test_golden", "test_chain3_exact_assignment"},
     "tests/test_properties.py": {"test_input_order_does_not_change_cost"},
     "tests/test_multi_period.py": {
-        "test_two_affected_periods_are_combined_without_cross_period_room_conflict"
+        "test_two_affected_periods_are_combined_without_cross_period_room_conflict",
+        "test_multi_period_request_is_infeasible_if_either_period_cannot_recover",
     },
     "tests/test_service_integrity.py": {
         "test_service_blocks_duplicate_proposals_without_exposing_validator_details",
@@ -125,6 +129,13 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
 
 
+def _major_minor(version: str) -> tuple[int, int]:
+    parts = version.split(".")
+    if len(parts) < 2:
+        raise ValueError(f"version has no major/minor pair: {version!r}")
+    return int(parts[0]), int(parts[1])
+
+
 def main() -> int:
     failures: list[str] = []
     notes: list[str] = []
@@ -173,6 +184,7 @@ def main() -> int:
     except Exception as exc:
         failures.append(f"Python 3.11 grammar parse failed: {type(exc).__name__}: {exc}")
 
+    fixture_failure_count = len(failures)
     try:
         from classshift.input_validator import parse_dataset, parse_outages
         from scripts.brute_force_oracle import brute_force_period, brute_force_period_details
@@ -213,7 +225,8 @@ def main() -> int:
                     failures.append(f"fixture expected infeasible but oracle found recovery: {path.name}")
             else:
                 failures.append(f"fixture missing/invalid expected status: {path.name}")
-        notes.append("strict demo/fixture validation and brute-force fixture oracle: PASS")
+        if not missing_fixtures and len(failures) == fixture_failure_count:
+            notes.append("strict demo/fixture validation and brute-force fixture oracle: PASS")
     except Exception as exc:
         failures.append(f"fixture/domain verification failed: {type(exc).__name__}: {exc}")
 
@@ -238,50 +251,83 @@ def main() -> int:
     except Exception as exc:
         failures.append(f"independence source check failed: {exc}")
 
-    app_text = (ROOT / "app.py").read_text(encoding="utf-8")
-    if "debug=True" in app_text:
-        failures.append("debug=True found in app.py")
-    if "MAX_CONTENT_LENGTH" not in app_text:
-        failures.append("request size limit not configured in app.py")
+    app_path = ROOT / "app.py"
+    if app_path.is_file():
+        app_text = app_path.read_text(encoding="utf-8")
+        if "debug=True" in app_text:
+            failures.append("debug=True found in app.py")
+        if "MAX_CONTENT_LENGTH" not in app_text:
+            failures.append("request size limit not configured in app.py")
 
-    frontend_text = "\n".join(
-        (ROOT / rel).read_text(encoding="utf-8")
-        for rel in (
-            "templates/index.html",
-            "static/styles.css",
-            "static/request_gate.js",
-            "static/app.js",
-        )
-    )
-    if "http://" in frontend_text or "https://" in frontend_text:
-        failures.append("remote/CDN URL found in bundled frontend assets")
-    dangerous_sinks = [
-        sink for sink in (".innerHTML", ".outerHTML", "insertAdjacentHTML", "document.write", "eval(")
-        if sink in frontend_text
+    frontend_paths = [
+        ROOT / "templates/index.html",
+        ROOT / "static/styles.css",
+        ROOT / "static/request_gate.js",
+        ROOT / "static/app.js",
     ]
-    if dangerous_sinks:
-        failures.append(f"dangerous frontend HTML/code sink(s) found: {', '.join(dangerous_sinks)}")
+    frontend_failure_count = len(failures)
+    if all(path.is_file() for path in frontend_paths):
+        frontend_text = "\n".join(path.read_text(encoding="utf-8") for path in frontend_paths)
+        if "http://" in frontend_text or "https://" in frontend_text:
+            failures.append("remote/CDN URL found in bundled frontend assets")
+        dangerous_sinks = [
+            sink
+            for sink in (".innerHTML", ".outerHTML", "insertAdjacentHTML", "document.write", "eval(")
+            if sink in frontend_text
+        ]
+        if dangerous_sinks:
+            failures.append(
+                f"dangerous frontend HTML/code sink(s) found: {', '.join(dangerous_sinks)}"
+            )
 
-    gate_text = (ROOT / "static/request_gate.js").read_text(encoding="utf-8")
-    js_text = (ROOT / "static/app.js").read_text(encoding="utf-8")
-    if not all(token in gate_text for token in ("AbortController", "generation", "ClassShiftRequestGate")):
-        failures.append("request gate is missing stale-response primitives")
-    if not all(token in js_text for token in ("model.gate.begin()", "model.gate.isCurrent", "model.gate.invalidate()")):
-        failures.append("app.js is not consistently using the request gate")
-    else:
-        notes.append("frontend release safety source checks: PASS")
+        gate_text = (ROOT / "static/request_gate.js").read_text(encoding="utf-8")
+        js_text = (ROOT / "static/app.js").read_text(encoding="utf-8")
+        if not all(
+            token in gate_text
+            for token in ("AbortController", "generation", "ClassShiftRequestGate")
+        ):
+            failures.append("request gate is missing stale-response primitives")
+        if not all(
+            token in js_text
+            for token in (
+                "model.gate.begin()",
+                "model.gate.isCurrent",
+                "model.gate.invalidate()",
+            )
+        ):
+            failures.append("app.js is not consistently using the request gate")
 
-    node = shutil.which("node")
-    if node:
-        node_proc = _run([node, "tests/js/test_request_gate.js"])
-        if node_proc.returncode != 0:
-            failures.append("JavaScript request-gate race test failed")
-            print(node_proc.stdout)
-            print(node_proc.stderr, file=sys.stderr)
+        if len(failures) == frontend_failure_count:
+            notes.append("frontend release safety source checks: PASS")
+
+        node = shutil.which("node")
+        if node:
+            node_proc = _run([node, "tests/js/test_request_gate.js"])
+            if node_proc.returncode != 0:
+                failures.append("JavaScript request-gate race test failed")
+                print(node_proc.stdout)
+                print(node_proc.stderr, file=sys.stderr)
+            else:
+                notes.append("JavaScript request-gate race semantics: PASS")
         else:
-            notes.append("JavaScript request-gate race semantics: PASS")
+            notes.append(
+                "JavaScript request-gate race semantics: UNVERIFIED (Node.js unavailable)"
+            )
+
+    browser_available = (
+        importlib.util.find_spec("playwright") is not None
+        and (shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome") or shutil.which("google-chrome-stable")) is not None
+    )
+    if browser_available:
+        browser_proc = _run([sys.executable, "scripts/browser_smoke.py"])
+        if browser_proc.returncode != 0:
+            failures.append("browser frontend smoke test failed")
+            print(browser_proc.stdout)
+            print(browser_proc.stderr, file=sys.stderr)
+        else:
+            notes.append(f"browser frontend smoke: PASS ({browser_proc.stdout.strip()})")
     else:
-        notes.append("JavaScript request-gate race semantics: UNVERIFIED (Node.js unavailable)")
+        notes.append("browser frontend smoke: UNVERIFIED (Playwright/Chromium unavailable)")
 
     offline_proc = _run([sys.executable, "-m", "pytest", "-q", *OFFLINE_TESTS])
     if offline_proc.returncode != 0:
@@ -291,11 +337,33 @@ def main() -> int:
     else:
         notes.append(f"dependency-free pytest: PASS ({offline_proc.stdout.strip()})")
 
+    runtime_targets = {
+        "flask": ("Flask", (3, 1)),
+        "waitress": ("waitress", (3, 0)),
+        "ortools": ("ortools", (9, 15)),
+    }
     missing_runtime: list[str] = []
-    for module in ("flask", "waitress", "ortools"):
+    for module, (distribution, expected) in runtime_targets.items():
         if importlib.util.find_spec(module) is None:
             missing_runtime.append(module)
             failures.append(f"missing required runtime dependency: {module}")
+            continue
+        try:
+            installed = metadata.version(distribution)
+            actual = _major_minor(installed)
+        except Exception as exc:
+            failures.append(
+                f"could not verify {distribution} version: {type(exc).__name__}: {exc}"
+            )
+            continue
+        if actual != expected:
+            failures.append(
+                f"{distribution} release version mismatch: expected {expected[0]}.{expected[1]}.x, "
+                f"running {installed}"
+            )
+        else:
+            notes.append(f"{distribution} version: PASS ({installed})")
+
     if sys.version_info[:2] != (3, 11):
         failures.append(f"release target requires Python 3.11; running {sys.version.split()[0]}")
 

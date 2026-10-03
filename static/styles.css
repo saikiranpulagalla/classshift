@@ -33,7 +33,7 @@ h2, h3 { margin: 0; color: var(--strong); }
 label, legend { font-weight: 700; }
 select { width: 100%; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--text); }
 fieldset { border: 0; padding: 0; margin: 0; }
-.room-options { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.room-options { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 8px; }
 .room-choice { display: flex; align-items: start; gap: 9px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; }
 .room-choice:hover { border-color: #a7b5c3; }
 .room-choice input { margin-top: .25em; }
