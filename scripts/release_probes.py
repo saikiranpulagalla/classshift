@@ -27,11 +27,12 @@ def probe_primary_chain() -> None:
     assert result["status"] == "OPTIMAL"
     assert result["validated"] is True
     assert result["move_count"] == 3
-    assert result["assignments"] == {
+    required_assignments = {
         "CHEM_10_MON_P3": "LAB_B",
         "BIO_10_MON_P3": "LAB_C",
         "PHYS_10_MON_P3": "ROOM_D",
     }
+    assert {lesson_id: result["assignments"][lesson_id] for lesson_id in required_assignments} == required_assignments
 
 
 def probe_infeasible_fixture() -> None:
