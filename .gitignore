@@ -1,4 +1,6 @@
 .venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -6,3 +8,11 @@ __pycache__/
 htmlcov/
 .DS_Store
 .env
+.env.*
+.idea/
+Thumbs.db
+classshift.zip
+classshift_rc*.zip
+audit-temp-*/
+*.tmp
+*.log
