@@ -69,4 +69,4 @@ def probe_equal_optimum_minimum() -> None:
 
 def probe_wsgi_entrypoint() -> None:
     from app import app
-    assert app.name == "app"
+    assert callable(app.wsgi_app)

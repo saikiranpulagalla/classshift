@@ -164,4 +164,4 @@ def test_release_probe_manifest_covers_release_defining_invariants():
 def test_documented_wsgi_entrypoint_is_importable():
     from app import app
 
-    assert app.name == "app"
+    assert callable(app.wsgi_app)
