@@ -16,3 +16,4 @@ classshift_rc*.zip
 audit-temp-*/
 *.tmp
 *.log
+.rc8-release.*

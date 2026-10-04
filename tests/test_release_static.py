@@ -107,7 +107,7 @@ def test_real_benchmark_evidence_is_not_gitignored():
 
 
 def test_release_verifier_manifest_covers_dependency_bound_critical_tests():
-    from scripts.verify_release import REQUIRED_TEST_FILES, MANDATORY_TEST_FUNCTIONS
+    from scripts.verify_release import REQUIRED_TEST_FILES, MANDATORY_TEST_FUNCTIONS, MANDATORY_TEST_NODES
 
     critical_files = {
         "tests/test_api.py",
@@ -128,6 +128,11 @@ def test_release_verifier_manifest_covers_dependency_bound_critical_tests():
         "tests/test_multi_period.py",
         "tests/test_service_integrity.py",
     } <= set(MANDATORY_TEST_FUNCTIONS)
+    assert MANDATORY_TEST_NODES == tuple(
+        f"{path}::{name}"
+        for path in sorted(MANDATORY_TEST_FUNCTIONS)
+        for name in sorted(MANDATORY_TEST_FUNCTIONS[path])
+    )
 
 
 def test_input_changes_are_wired_to_clear_and_invalidate_results():

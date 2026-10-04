@@ -100,6 +100,11 @@ Tests cover strict input types, baseline integrity, candidate boundaries, exact-
 
 ClassShift does not invent a schedule when the constraints cannot be satisfied.
 
+## Hackathon submission framing
+ClassShift is an Education / Social Good decision-support prototype for school timetable operations. The demonstrable flow is: an administrator reviews a timetable period, marks a room unavailable, previews the direct impact, requests a minimum-change recovery, and reviews the proposed plan before taking any action. It does not silently publish changes. The primary demo shows a three-step recovery chain; the infeasible demo shows that hard constraints are not relaxed.
+
+Public FIK FAIR 2026 judging weights are not asserted here. The project is presented through defensible fundamentals: a concrete educational operations problem, an exact global-assignment implementation, a working prototype, a simple human-in-control flow, and recorded verification evidence.
+
 ## Data and privacy
 All bundled demo/fixture data is synthetic. There are no student names, real school records, accounts, secrets, or PII. The prototype accepts only outage selections against the bundled demo timetable through the UI API. `/api/demo` first loads the strict validated domain model and then serializes a canonical whitelist of period, room, and lesson fields; raw JSON keys are never passed through directly.
 

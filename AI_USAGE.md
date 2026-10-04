@@ -21,6 +21,6 @@ Not used for:
 - determining whether runtime assignments are valid
 
 Runtime:
-ClassShift's recovery engine is deterministic and uses an exact optimization algorithm rather than an LLM.
+ClassShift's runtime recovery engine uses exact optimization rather than an LLM.
 
-The final implementation should be reviewed and tested by the project author before submission.
+The release candidate records automated verification evidence; the project author remains responsible for final submission review.

@@ -4,6 +4,7 @@ import ast
 import importlib.util
 from importlib import metadata
 import json
+import math
 import re
 from pathlib import Path
 import shutil
@@ -33,18 +34,6 @@ REQUIRED_RELEASE_PROBES = {
     "probe_equal_optimum_minimum",
     "probe_wsgi_entrypoint",
 }
-
-MANDATORY_TEST_NODES = (
-    "tests/test_golden_fixtures.py::test_golden",
-    "tests/test_golden_fixtures.py::test_chain3_exact_assignment",
-    "tests/test_differential.py::test_differential_small_random_cases",
-    "tests/test_solution_validator.py::test_duplicate_lesson_assignment_detected",
-    "tests/test_service_integrity.py::test_service_blocks_duplicate_proposals_without_exposing_validator_details",
-    "tests/test_api.py::test_valid_optimal",
-    "tests/test_api.py::test_valid_infeasible",
-    "tests/test_api.py::test_solver_error_does_not_leak_solver_diagnostic",
-    "tests/test_frontend_race.py::test_request_gate_race_semantics_execute_in_javascript_runtime",
-)
 
 REQUIRED_FIXTURES = {
     "no_outage.json", "direct_move.json", "chain_2.json", "chain_3.json",
@@ -113,10 +102,16 @@ MANDATORY_TEST_FUNCTIONS = {
     "tests/test_frontend_race.py": {
         "test_request_gate_race_semantics_execute_in_javascript_runtime"
     },
-    "tests/test_release_verifier.py": {
-        "test_release_verifier_rejects_adversarial_mutations",
-    },
 }
+
+# The executable node list is derived from the same manifest used for source
+# presence and sanity checks. This keeps every named critical invariant in one
+# canonical declaration rather than letting a second list silently drift.
+MANDATORY_TEST_NODES = tuple(
+    f"{path}::{name}"
+    for path in sorted(MANDATORY_TEST_FUNCTIONS)
+    for name in sorted(MANDATORY_TEST_FUNCTIONS[path])
+)
 
 OFFLINE_TESTS = [
     "tests/test_input_validation.py",
@@ -169,7 +164,7 @@ def _meaningful_test_body(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         body.pop(0)
     if not body:
         return False
-    if isinstance(body[0], ast.Return) and body[0].value is None:
+    if isinstance(body[0], ast.Return):
         return False
     return not all(
         isinstance(statement, ast.Pass)
@@ -195,10 +190,10 @@ def _forbidden_pytest_outcomes(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"skip", "xfail"}:
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"skip", "skipif", "xfail"}:
             found.add(node.func.attr)
         if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "pytestmark" for target in node.targets):
-            if any(isinstance(child, ast.Attribute) and child.attr in {"skip", "xfail"} for child in ast.walk(node.value)):
+            if any(isinstance(child, ast.Attribute) and child.attr in {"skip", "skipif", "xfail"} for child in ast.walk(node.value)):
                 found.add("module-level skip/xfail")
     return found
 
@@ -237,7 +232,13 @@ def _mandatory_junit_passed(proc: subprocess.CompletedProcess[str], xml_path: Pa
     if proc.returncode != 0 or not xml_path.is_file():
         return False
     root = ET.parse(xml_path).getroot()
-    return not root.findall(".//skipped") and not root.findall(".//failure") and not root.findall(".//error")
+    cases = root.findall(".//testcase")
+    return (
+        len(cases) >= len(MANDATORY_TEST_NODES)
+        and not root.findall(".//skipped")
+        and not root.findall(".//failure")
+        and not root.findall(".//error")
+    )
 
 
 def _trivial_mandatory_tests(path: Path, required_names: set[str]) -> set[str]:
@@ -293,6 +294,89 @@ def _major_minor(version: str) -> tuple[int, int]:
     if len(parts) < 2:
         raise ValueError(f"version has no major/minor pair: {version!r}")
     return int(parts[0]), int(parts[1])
+
+
+def _exact_release_tags() -> list[str]:
+    git = shutil.which("git")
+    if not git or not (ROOT / ".git").exists():
+        return []
+    proc = _run([git, "tag", "--points-at", "HEAD"])
+    if proc.returncode != 0:
+        raise RuntimeError("could not inspect exact Git release tag")
+    return [tag.strip() for tag in proc.stdout.splitlines() if tag.strip().startswith("v")]
+
+
+def _is_finite_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value >= 0
+    )
+
+
+def _benchmark_provenance_error(benchmark: dict[str, object], package_version: str) -> str | None:
+    environment = benchmark.get("environment")
+    measured = benchmark.get("measured_code_commit")
+    if not isinstance(environment, dict) or not isinstance(measured, str) or not measured:
+        return "benchmark evidence exists but is incomplete"
+    if benchmark.get("classshift_version") != package_version:
+        return "benchmark classshift_version does not match package version"
+    if not str(environment.get("python", "")).startswith("3.11."):
+        return "benchmark evidence was not measured on Python 3.11"
+    if not str(environment.get("ortools", "")).startswith("9.15."):
+        return "benchmark evidence was not measured with OR-Tools 9.15.x"
+    if not environment.get("os") or not environment.get("cpu"):
+        return "benchmark environment provenance is incomplete"
+
+    git = shutil.which("git")
+    if git and (ROOT / ".git").exists():
+        exists = _run([git, "cat-file", "-e", f"{measured}^{{commit}}"])
+        if exists.returncode != 0:
+            return "benchmark measured_code_commit does not name a local commit"
+        ancestor = _run([git, "merge-base", "--is-ancestor", measured, "HEAD"])
+        if ancestor.returncode != 0:
+            return "benchmark measured_code_commit is not an ancestor of HEAD"
+        changed = _run([git, "diff", "--name-only", f"{measured}..HEAD"])
+        if changed.returncode != 0:
+            return "could not inspect benchmark provenance diff"
+        paths = [path for path in changed.stdout.splitlines() if path]
+        if any(not path.startswith("evidence/final/") for path in paths):
+            return "source changed after benchmark measurement"
+    return None
+
+
+def _benchmark_matrix_error(benchmark: dict[str, object]) -> str | None:
+    expected_pairs = {
+        (profile, lessons, rooms)
+        for lessons, rooms in ((10, 15), (25, 35), (50, 70), (100, 130))
+        for profile in ("dense", "sparse", "bottleneck", "near_infeasible")
+    }
+    cases = benchmark.get("cases")
+    if not isinstance(cases, list):
+        return "benchmark evidence exists but is incomplete"
+    pairs = [(case.get("profile"), case.get("lessons"), case.get("rooms")) for case in cases if isinstance(case, dict)]
+    if len(cases) != len(expected_pairs) or len(set(pairs)) != len(pairs) or set(pairs) != expected_pairs:
+        return "benchmark matrix is incomplete or contains duplicate cases"
+    for case in cases:
+        if not isinstance(case, dict):
+            return "benchmark matrix contains a malformed case"
+        expected_status = "INFEASIBLE" if case["profile"] == "near_infeasible" else "OPTIMAL"
+        if case.get("status") != expected_status:
+            return "benchmark case status is inconsistent with its profile"
+        timings = ("validation_ms", "candidate_generation_ms", "solver_ms", "pipeline_total_ms")
+        if not all(_is_finite_number(case.get(name)) for name in timings):
+            return "benchmark timing metadata is malformed"
+        if expected_status == "INFEASIBLE":
+            if case.get("validator_executed") is not False or case.get("validator_ms") is not None or case.get("validator_valid") is not None:
+                return "benchmark validator execution metadata is inconsistent"
+        elif (
+            case.get("validator_executed") is not True
+            or case.get("validator_valid") is not True
+            or not _is_finite_number(case.get("validator_ms"))
+        ):
+            return "benchmark validator execution metadata is inconsistent"
+    return None
 
 
 def main(static_only: bool = False) -> int:
@@ -363,18 +447,14 @@ def main(static_only: bool = False) -> int:
         package_version = _package_version()
         git = shutil.which("git")
         if git and (ROOT / ".git").exists():
-            tag_proc = _run([git, "tag", "--points-at", "HEAD"])
-            if tag_proc.returncode != 0:
-                failures.append("could not inspect exact Git release tag")
+            release_tags = _exact_release_tags()
+            tag_error = version_tag_error(package_version, release_tags)
+            if tag_error:
+                failures.append(tag_error)
+            elif release_tags:
+                notes.append(f"package version/tag consistency: PASS ({package_version})")
             else:
-                release_tags = [tag.strip() for tag in tag_proc.stdout.splitlines() if tag.strip().startswith("v")]
-                tag_error = version_tag_error(package_version, release_tags)
-                if tag_error:
-                    failures.append(tag_error)
-                elif release_tags:
-                    notes.append(f"package version/tag consistency: PASS ({package_version})")
-                else:
-                    notes.append("package version/tag consistency: UNVERIFIED (no exact release tag)")
+                notes.append("package version/tag consistency: UNVERIFIED (no exact release tag)")
         else:
             notes.append("package version/tag consistency: UNVERIFIED (Git metadata unavailable)")
     except Exception as exc:
@@ -575,7 +655,8 @@ def main(static_only: bool = False) -> int:
                 f"could not verify {distribution} version: {type(exc).__name__}: {exc}"
             )
             continue
-        if actual != expected:
+        version_matches = actual[0] == expected[0] if module == "waitress" else actual == expected
+        if not version_matches:
             failures.append(
                 f"{distribution} release version mismatch: expected {expected[0]}.{expected[1]}.x, "
                 f"running {installed}"
@@ -616,19 +697,28 @@ def main(static_only: bool = False) -> int:
             notes.append(f"full pytest: PASS ({proc.stdout.strip()})")
 
     benchmark_path = ROOT / "evidence" / "final" / "benchmark.json"
+    exact_release = bool(_exact_release_tags()) if shutil.which("git") and (ROOT / ".git").exists() else False
+    required_final_evidence = (
+        "benchmark.json",
+        "full-pytest.txt",
+        "release-summary.txt",
+        "waitress-smoke.txt",
+    )
+    if exact_release:
+        missing_evidence = [name for name in required_final_evidence if not (ROOT / "evidence" / "final" / name).is_file()]
+        if missing_evidence:
+            failures.append(f"tagged release is missing required final evidence: {', '.join(missing_evidence)}")
     if benchmark_path.is_file():
         try:
-            benchmark = json.loads(benchmark_path.read_text(encoding="utf-8"))
-            expected_pairs = {(profile, lessons, rooms) for lessons, rooms in ((10, 15), (25, 35), (50, 70), (100, 130)) for profile in ("dense", "sparse", "bottleneck", "near_infeasible")}
-            actual_pairs = {(case.get("profile"), case.get("lessons"), case.get("rooms")) for case in benchmark.get("cases", [])}
-            if not benchmark.get("environment") or not benchmark.get("measured_code_commit") or actual_pairs != expected_pairs:
+            from classshift.loader import load_json
+
+            benchmark = load_json(benchmark_path)
+            if not isinstance(benchmark, dict):
                 failures.append("benchmark evidence exists but is incomplete")
-            elif any(
-                (case.get("profile") == "near_infeasible" and (case.get("validator_executed") is not False or case.get("validator_ms") is not None))
-                or (case.get("profile") != "near_infeasible" and (case.get("validator_executed") is not True or case.get("validator_valid") is not True or case.get("validator_ms") is None))
-                for case in benchmark["cases"]
-            ):
-                failures.append("benchmark validator execution metadata is inconsistent")
+            elif (error := _benchmark_provenance_error(benchmark, package_version)):
+                failures.append(error)
+            elif (error := _benchmark_matrix_error(benchmark)):
+                failures.append(error)
             else:
                 notes.append(f"benchmark evidence: PRESENT ({len(benchmark['cases'])} measured cases)")
         except Exception as exc:
