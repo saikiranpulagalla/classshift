@@ -1,0 +1,10 @@
+ClassShift RC7 authoritative evidence
+
+Version: 1.0.0rc7
+Measured code commit: adfec909a3ee7ff7451ca1762907275ce04fd0bf
+Release tag at measurement time: null
+
+The benchmark, full pytest, release verification, and Waitress smoke in this
+directory were executed against the measured code commit above. The RC7 tag is
+applied only to the later evidence-only commit. Historical attempts are kept in
+evidence/history/ and are not current-release evidence.

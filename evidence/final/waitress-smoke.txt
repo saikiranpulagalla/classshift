@@ -1,0 +1,11 @@
+RC7 candidate commit: adfec909a3ee7ff7451ca1762907275ce04fd0bf
+
+Waitress localhost smoke on 127.0.0.1:8012:
+- GET /: 200
+- GET /api/demo: 200
+- LAB_A / MON_P3: 200 OPTIMAL
+- ART_1 / MON_P1: 200 INFEASIBLE
+- invalid JSON shape: 400 INVALID_INPUT
+- wrong content type: 400 INVALID_INPUT
+
+The temporary Waitress process was stopped after the smoke test.
