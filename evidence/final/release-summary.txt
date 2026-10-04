@@ -1,0 +1,10 @@
+ClassShift RC8 authoritative evidence
+
+Version: 1.0.0rc8
+Measured code commit: 948a39e37bf6ba7a2010ad736025ae7004260a64
+Release tag at measurement time: null
+
+The benchmark, full pytest, release verification, and Waitress smoke in this
+directory were executed against the measured code commit above. The RC8 tag is
+applied only to the later evidence-only commit. Historical RC6 and RC7 evidence
+is retained under evidence/history/ and is not current-release evidence.

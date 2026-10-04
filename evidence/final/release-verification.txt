@@ -1,0 +1,22 @@
+RC8 candidate commit: 948a39e37bf6ba7a2010ad736025ae7004260a64
+Runtime: Python 3.11.9, Flask 3.1.3, Waitress 3.0.2, OR-Tools 9.15.6755, pytest 9.1.1
+
+$ .\.venv\Scripts\python.exe scripts\verify_release.py
+- mandatory test manifest: PASS
+- release probe manifest: PASS
+- package version/tag consistency: UNVERIFIED (no exact release tag)
+- Python 3.11 grammar parse: PASS (33 files)
+- strict demo/fixture validation and brute-force fixture oracle: PASS
+- validator/oracle independence source check: PASS
+- frontend release safety source checks: PASS
+- JavaScript request-gate race semantics: PASS
+- browser frontend smoke: UNVERIFIED (Playwright/Chromium unavailable)
+- dependency-free pytest: PASS (100 passed in 1.19s)
+- Flask version: PASS (3.1.3)
+- waitress version: PASS (3.0.2)
+- ortools version: PASS (9.15.6755)
+- independent release probes: PASS
+- mandatory critical pytest nodes: PASS (34 passed in 0.60s)
+- full pytest: PASS (171 passed in 21.81s)
+- benchmark evidence: PRESENT (16 measured cases)
+RELEASE VERIFICATION: PASS
