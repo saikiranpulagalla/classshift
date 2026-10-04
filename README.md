@@ -2,7 +2,7 @@
 
 **When a classroom goes offline, repair the schedule—not the whole school day.**
 
-ClassShift is a deterministic decision-support prototype that finds the minimum number of same-time room changes needed after a classroom outage while preserving modeled room constraints.
+ClassShift is an exact-optimization decision-support prototype that finds the minimum number of same-time room changes needed after a classroom outage while preserving modeled room constraints.
 
 ## Why it exists
 A classroom outage can create a chain reaction. Moving only the directly affected class can fail even when a valid recovery exists. ClassShift therefore solves **all lessons in each affected period** as one exact assignment problem.
@@ -46,10 +46,21 @@ Original-room edge cost = 0. Any other eligible room edge cost = 1. OR-Tools min
 ## Install
 Target runtime: **Python 3.11**.
 
+Windows PowerShell:
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python --version
+python -m pip install -r requirements.txt
+```
+
+macOS/Linux:
+
 ```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
+python3.11 -m venv .venv
+source .venv/bin/activate
+python --version
 python -m pip install -r requirements.txt
 ```
 
@@ -98,7 +109,7 @@ The UI uses semantic controls and tables, a high-contrast focus indicator, keybo
 These are implementation design measures, not a claim of formal accessibility certification.
 
 ## Performance
-`scripts/benchmark.py` can record measured validation, candidate-generation, solver, validator, and total timings for deterministic **dense, sparse, bottleneck, and near-infeasible** synthetic cases at several sizes into `evidence/benchmark.json`. Do not quote numbers unless that file was produced by an actual run in the environment being discussed.
+`scripts/benchmark.py` records measured validation, candidate-generation, solver, validator, and synthetic pipeline timings for **dense, sparse, bottleneck, and near-infeasible** cases at several sizes into `evidence/final/benchmark.json`. `pipeline_total_ms` is not HTTP API latency. Do not quote numbers unless that file was produced by an actual run in the environment being discussed.
 
 ## Evidence policy
 Only actual executed evidence belongs in `evidence/`. The release verifier checks a mandatory test-file/function manifest, rejects obviously trivialized mandatory tests, executes critical behavioral test nodes when target dependencies are available, and runs independent release probes. These checks are defenses against accidental or casual weakening, not a claim that a local repository verifier makes deliberate tampering impossible. It also checks strict fixture/oracle validity, validator/oracle independence, unsafe frontend sinks, request-gate wiring, JavaScript race semantics when Node.js is available, the browser frontend smoke when Playwright/Chromium are available, required runtime versions, Python 3.11, and pytest. Real benchmark evidence is intentionally trackable in Git once generated. No fabricated benchmark, user-validation, or test claims are included.

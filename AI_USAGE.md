@@ -2,6 +2,7 @@
 
 AI tools used:
 - ChatGPT
+- OpenAI Codex / Terra
 
 Used for:
 - brainstorming and project research
@@ -10,6 +11,8 @@ Used for:
 - implementation assistance
 - debugging assistance
 - test-case suggestions
+- adversarial failure hunting and edge-case analysis
+- release hardening
 - documentation assistance
 
 Not used for:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from classshift.domain import ProposedAssignment, PublicStatus
 from classshift.input_validator import parse_dataset, parse_outages
 from classshift.optimizer import OptimizeResult
@@ -63,3 +65,17 @@ def test_service_solver_error_is_generic(monkeypatch, fixture_loader):
         "validated": False,
         "message": "The optimization solver did not return a proven optimum.",
     }
+
+
+@pytest.mark.parametrize("fixture_name", ["direct_move.json", "locked_infeasible.json"])
+def test_recover_snapshots_tuple_list_and_generator_outages(fixture_loader, fixture_name):
+    raw = fixture_loader(fixture_name)
+    dataset = parse_dataset({key: raw[key] for key in ("periods", "rooms", "lessons")})
+    outages = parse_outages(raw["outages"], dataset)
+    tuple_result = recover(dataset, outages)
+    list_result = recover(dataset, list(outages))
+    generator_result = recover(dataset, (outage for outage in outages))
+    for result in (list_result, generator_result):
+        assert result["status"] == tuple_result["status"]
+        assert result.get("move_count") == tuple_result.get("move_count")
+        assert result.get("assignments") == tuple_result.get("assignments")

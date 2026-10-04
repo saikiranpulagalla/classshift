@@ -8,9 +8,22 @@ from .domain import Dataset
 from .input_validator import parse_dataset
 
 
+class DuplicateJsonKeyError(ValueError):
+    pass
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJsonKeyError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
 def load_json(path: str | Path) -> Any:
     with Path(path).open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+        return json.load(handle, object_pairs_hook=_reject_duplicate_keys)
 
 
 def load_dataset(path: str | Path) -> Dataset:

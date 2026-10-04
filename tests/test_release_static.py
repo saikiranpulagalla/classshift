@@ -103,7 +103,7 @@ def test_focus_indicator_contrast_exceeds_three_to_one_against_white():
 
 def test_real_benchmark_evidence_is_not_gitignored():
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
-    assert "evidence/benchmark.json" not in gitignore
+    assert "evidence/final/benchmark.json" not in gitignore
 
 
 def test_release_verifier_manifest_covers_dependency_bound_critical_tests():
@@ -159,3 +159,9 @@ def test_release_probe_manifest_covers_release_defining_invariants():
     from scripts.verify_release import REQUIRED_RELEASE_PROBES, _top_level_functions
 
     assert REQUIRED_RELEASE_PROBES <= _top_level_functions(ROOT / "scripts" / "release_probes.py")
+
+
+def test_documented_wsgi_entrypoint_is_importable():
+    from app import app
+
+    assert app.name == "app"

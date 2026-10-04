@@ -9,6 +9,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -29,6 +31,7 @@ REQUIRED_RELEASE_PROBES = {
     "probe_infeasible_fixture",
     "probe_validator_rejects_corruption",
     "probe_equal_optimum_minimum",
+    "probe_wsgi_entrypoint",
 }
 
 MANDATORY_TEST_NODES = (
@@ -67,6 +70,7 @@ REQUIRED_TEST_FILES = {
     "tests/test_frontend_race.py",
     "tests/test_multi_period.py",
     "tests/test_service_integrity.py",
+    "tests/test_release_verifier.py",
     "tests/js/test_request_gate.js",
 }
 
@@ -108,6 +112,9 @@ MANDATORY_TEST_FUNCTIONS = {
     "tests/test_loader.py": {"test_public_demo_serializer_whitelists_canonical_fields"},
     "tests/test_frontend_race.py": {
         "test_request_gate_race_semantics_execute_in_javascript_runtime"
+    },
+    "tests/test_release_verifier.py": {
+        "test_release_verifier_rejects_adversarial_mutations",
     },
 }
 
@@ -162,9 +169,13 @@ def _meaningful_test_body(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         body.pop(0)
     if not body:
         return False
+    if isinstance(body[0], ast.Return) and body[0].value is None:
+        return False
     return not all(
         isinstance(statement, ast.Pass)
         or (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant))
+        or (isinstance(statement, ast.Return) and statement.value is None)
+        or isinstance(statement, (ast.Assign, ast.AnnAssign))
         or (
             isinstance(statement, ast.Assert)
             and isinstance(statement.test, ast.Constant)
@@ -172,6 +183,61 @@ def _meaningful_test_body(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         )
         for statement in body
     )
+
+
+def _trivial_required_probes(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    functions = {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    return {name for name in REQUIRED_RELEASE_PROBES if name in functions and not _meaningful_test_body(functions[name])}
+
+
+def _forbidden_pytest_outcomes(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"skip", "xfail"}:
+            found.add(node.func.attr)
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "pytestmark" for target in node.targets):
+            if any(isinstance(child, ast.Attribute) and child.attr in {"skip", "xfail"} for child in ast.walk(node.value)):
+                found.add("module-level skip/xfail")
+    return found
+
+
+def _app_entrypoint_is_present(path: Path) -> bool:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    return any(
+        isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "app" for target in node.targets)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "create_app"
+        for node in tree.body
+    )
+
+
+def _debug_enabled(path: Path) -> bool:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "run":
+            if any(keyword.arg == "debug" and isinstance(keyword.value, ast.Constant) and keyword.value.value is True for keyword in node.keywords):
+                return True
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant) and node.value.value is True:
+            for target in node.targets:
+                if isinstance(target, ast.Subscript) and isinstance(target.slice, ast.Constant) and target.slice.value == "DEBUG":
+                    return True
+    return False
+
+
+def _has_remote_asset_reference(html: str, css: str) -> bool:
+    asset = re.compile(r"(?:src|href)\s*=\s*[\"']\s*(?://|https?://)|@import\s+(?:url\()?\s*[\"']?\s*(?://|https?://)|url\(\s*[\"']?\s*(?://|https?://)", re.I)
+    return bool(asset.search(html) or asset.search(css))
+
+
+def _mandatory_junit_passed(proc: subprocess.CompletedProcess[str], xml_path: Path) -> bool:
+    if proc.returncode != 0 or not xml_path.is_file():
+        return False
+    root = ET.parse(xml_path).getroot()
+    return not root.findall(".//skipped") and not root.findall(".//failure") and not root.findall(".//error")
 
 
 def _trivial_mandatory_tests(path: Path, required_names: set[str]) -> set[str]:
@@ -269,6 +335,10 @@ def main(static_only: bool = False) -> int:
             failures.append(
                 f"{rel} has trivial mandatory release test(s): {', '.join(trivial_names)}"
             )
+        forbidden_outcomes = _forbidden_pytest_outcomes(path)
+        if forbidden_outcomes:
+            manifest_ok = False
+            failures.append(f"{rel} uses forbidden mandatory pytest outcome(s): {', '.join(sorted(forbidden_outcomes))}")
     if manifest_ok:
         notes.append("mandatory test manifest: PASS")
 
@@ -281,7 +351,11 @@ def main(static_only: bool = False) -> int:
                 f"release probe layer is missing required probe(s): {', '.join(missing_probes)}"
             )
         else:
-            notes.append("release probe manifest: PASS")
+            trivial_probes = sorted(_trivial_required_probes(probes_path))
+            if trivial_probes:
+                failures.append(f"release probe layer has trivial required probe(s): {', '.join(trivial_probes)}")
+            else:
+                notes.append("release probe manifest: PASS")
     except Exception as exc:
         failures.append(f"could not inspect release probe layer: {exc}")
 
@@ -324,12 +398,13 @@ def main(static_only: bool = False) -> int:
     fixture_failure_count = len(failures)
     try:
         from classshift.input_validator import parse_dataset, parse_outages
+        from classshift.loader import load_json
         from scripts.brute_force_oracle import brute_force_period, brute_force_period_details
 
-        demo_raw = json.loads((ROOT / "data/demo_school.json").read_text(encoding="utf-8"))
+        demo_raw = load_json(ROOT / "data/demo_school.json")
         parse_dataset(demo_raw)
         for path in sorted(fixture_dir.glob("*.json")):
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            raw = load_json(path)
             dataset_raw = {key: raw[key] for key in ("periods", "rooms", "lessons")}
             dataset = parse_dataset(dataset_raw)
             outages = parse_outages(raw.get("outages", []), dataset)
@@ -391,10 +466,12 @@ def main(static_only: bool = False) -> int:
     app_path = ROOT / "app.py"
     if app_path.is_file():
         app_text = app_path.read_text(encoding="utf-8")
-        if "debug=True" in app_text:
+        if _debug_enabled(app_path):
             failures.append("debug=True found in app.py")
         if "MAX_CONTENT_LENGTH" not in app_text:
             failures.append("request size limit not configured in app.py")
+        if not _app_entrypoint_is_present(app_path):
+            failures.append("documented app:app entrypoint is missing")
 
     frontend_paths = [
         ROOT / "templates/index.html",
@@ -404,8 +481,10 @@ def main(static_only: bool = False) -> int:
     ]
     frontend_failure_count = len(failures)
     if all(path.is_file() for path in frontend_paths):
+        html_text = (ROOT / "templates/index.html").read_text(encoding="utf-8")
+        css_text = (ROOT / "static/styles.css").read_text(encoding="utf-8")
         frontend_text = "\n".join(path.read_text(encoding="utf-8") for path in frontend_paths)
-        if "http://" in frontend_text or "https://" in frontend_text:
+        if _has_remote_asset_reference(html_text, css_text):
             failures.append("remote/CDN URL found in bundled frontend assets")
         dangerous_sinks = [
             sink
@@ -517,9 +596,12 @@ def main(static_only: bool = False) -> int:
         except Exception as exc:
             failures.append(f"independent release probe failed: {type(exc).__name__}: {exc}")
 
-        mandatory_proc = _run([sys.executable, "-m", "pytest", "-q", *MANDATORY_TEST_NODES])
-        if mandatory_proc.returncode != 0:
-            failures.append("mandatory critical pytest nodes failed")
+        with tempfile.TemporaryDirectory() as temporary:
+            junit_path = Path(temporary) / "mandatory.xml"
+            mandatory_proc = _run([sys.executable, "-m", "pytest", "-q", f"--junitxml={junit_path}", *MANDATORY_TEST_NODES])
+            mandatory_passed = _mandatory_junit_passed(mandatory_proc, junit_path)
+        if not mandatory_passed:
+            failures.append("mandatory critical pytest nodes did not all pass")
             print(mandatory_proc.stdout)
             print(mandatory_proc.stderr, file=sys.stderr)
         else:
@@ -533,12 +615,20 @@ def main(static_only: bool = False) -> int:
         else:
             notes.append(f"full pytest: PASS ({proc.stdout.strip()})")
 
-    benchmark_path = ROOT / "evidence" / "benchmark.json"
+    benchmark_path = ROOT / "evidence" / "final" / "benchmark.json"
     if benchmark_path.is_file():
         try:
             benchmark = json.loads(benchmark_path.read_text(encoding="utf-8"))
-            if not benchmark.get("cases") or not benchmark.get("environment"):
+            expected_pairs = {(profile, lessons, rooms) for lessons, rooms in ((10, 15), (25, 35), (50, 70), (100, 130)) for profile in ("dense", "sparse", "bottleneck", "near_infeasible")}
+            actual_pairs = {(case.get("profile"), case.get("lessons"), case.get("rooms")) for case in benchmark.get("cases", [])}
+            if not benchmark.get("environment") or not benchmark.get("measured_code_commit") or actual_pairs != expected_pairs:
                 failures.append("benchmark evidence exists but is incomplete")
+            elif any(
+                (case.get("profile") == "near_infeasible" and (case.get("validator_executed") is not False or case.get("validator_ms") is not None))
+                or (case.get("profile") != "near_infeasible" and (case.get("validator_executed") is not True or case.get("validator_valid") is not True or case.get("validator_ms") is None))
+                for case in benchmark["cases"]
+            ):
+                failures.append("benchmark validator execution metadata is inconsistent")
             else:
                 notes.append(f"benchmark evidence: PRESENT ({len(benchmark['cases'])} measured cases)")
         except Exception as exc:

@@ -26,6 +26,9 @@ def recover_from_raw(dataset_raw: Any, outages_raw: Any) -> dict[str, Any]:
 
 
 def recover(dataset: Dataset, outages) -> dict[str, Any]:
+    # Service callers may supply any iterable; retain one stable outage snapshot
+    # for period discovery, optimization, explanation, and validation.
+    outages = tuple(outages)
     affected_periods = sorted({pid for outage in outages for pid in outage.period_ids})
     affected_period_set = set(affected_periods)
 

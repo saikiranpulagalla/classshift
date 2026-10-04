@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import platform
+import subprocess
 from pathlib import Path
 import sys
 from time import perf_counter
@@ -104,10 +105,14 @@ def timed(n: int, m: int, profile: str) -> dict:
         result = optimize_period(dataset, outages, "MON_P1")
     t3 = perf_counter()
 
+    validator_executed = False
     validator_valid = None
+    validator_ms = None
     if result.status.value == "OPTIMAL" and result.assignments is not None:
+        validator_executed = True
         checked = validate_solution(dataset, outages, result.assignments, result.move_count)
         validator_valid = checked.valid
+        validator_ms = (perf_counter() - t3) * 1000
     t4 = perf_counter()
 
     return {
@@ -117,8 +122,9 @@ def timed(n: int, m: int, profile: str) -> dict:
         "validation_ms": (t1 - t0) * 1000,
         "candidate_generation_ms": (t2 - t1) * 1000,
         "solver_ms": (t3 - t2) * 1000,
-        "validator_ms": (t4 - t3) * 1000,
-        "total_ms": (t4 - total_start) * 1000,
+        "validator_executed": validator_executed,
+        "validator_ms": validator_ms,
+        "pipeline_total_ms": (t4 - total_start) * 1000,
         "status": result.status.value,
         "move_count": result.move_count,
         "validator_valid": validator_valid,
@@ -127,6 +133,7 @@ def timed(n: int, m: int, profile: str) -> dict:
 
 def main() -> int:
     import ortools
+    from classshift import __version__
 
     cases = [timed(n, m, profile) for n, m in SIZES for profile in PROFILES]
     for case in cases:
@@ -149,10 +156,16 @@ def main() -> int:
             "ortools": ortools.__version__,
             "cpu": platform.processor() or "unreported",
         },
-        "method": "single measured run per deterministic synthetic case; no invented values",
+        "classshift_version": __version__,
+        "measured_code_commit": subprocess.run(
+            ["git", "rev-parse", "HEAD"], text=True, capture_output=True, check=True
+        ).stdout.strip(),
+        "release_tag": None,
+        "method": "single measured run per deterministic synthetic pipeline; no invented values",
         "cases": cases,
     }
-    path = Path(__file__).resolve().parents[1] / "evidence" / "benchmark.json"
+    path = Path(__file__).resolve().parents[1] / "evidence" / "final" / "benchmark.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(json.dumps(data, indent=2))
     return 0

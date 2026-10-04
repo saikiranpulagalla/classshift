@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_request_gate_race_semantics_execute_in_javascript_runtime():
     node = shutil.which("node")
     if node is None:
-        pytest.skip("Node.js is not available for the JavaScript race-semantic test")
+        pytest.fail("Node.js is required for the mandatory JavaScript race-semantic test")
     proc = subprocess.run(
         [node, "tests/js/test_request_gate.js"],
         cwd=ROOT,

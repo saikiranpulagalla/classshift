@@ -7,6 +7,7 @@ from pathlib import Path
 
 from classshift.domain import ProposedAssignment
 from classshift.input_validator import parse_dataset, parse_outages
+from classshift.loader import load_dataset
 from classshift.service import recover_from_raw
 from classshift.solution_validator import validate_solution
 from scripts.brute_force_oracle import brute_force_period_details
@@ -19,10 +20,10 @@ def _fixture(name: str) -> dict:
 
 
 def probe_primary_chain() -> None:
-    raw = _fixture("chain_3.json")
-    result = recover_from_raw(
-        {key: raw[key] for key in ("periods", "rooms", "lessons")}, raw["outages"]
-    )
+    dataset = load_dataset(ROOT / "data" / "demo_school.json")
+    outages = parse_outages([{"room_id": "LAB_A", "period_ids": ["MON_P3"]}], dataset)
+    from classshift.service import recover
+    result = recover(dataset, outages)
     assert result["status"] == "OPTIMAL"
     assert result["validated"] is True
     assert result["move_count"] == 3
@@ -34,11 +35,12 @@ def probe_primary_chain() -> None:
 
 
 def probe_infeasible_fixture() -> None:
-    raw = _fixture("locked_infeasible.json")
-    result = recover_from_raw(
-        {key: raw[key] for key in ("periods", "rooms", "lessons")}, raw["outages"]
-    )
+    dataset = load_dataset(ROOT / "data" / "demo_school.json")
+    outages = parse_outages([{"room_id": "ART_1", "period_ids": ["MON_P1"]}], dataset)
+    from classshift.service import recover
+    result = recover(dataset, outages)
     assert result["status"] == "INFEASIBLE"
+    assert result["validated"] is False
 
 
 def probe_validator_rejects_corruption() -> None:
@@ -63,3 +65,8 @@ def probe_equal_optimum_minimum() -> None:
     assert feasible is True
     assert move_count == 1
     assert optimum_count >= 2
+
+
+def probe_wsgi_entrypoint() -> None:
+    from app import app
+    assert app.name == "app"

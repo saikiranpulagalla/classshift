@@ -44,6 +44,7 @@ def _tag_rc6(repo: Path) -> None:
     ("mutation", "expected_reason"),
     [
         ("delete_optimizer", "missing required file: tests/test_optimizer.py"),
+        ("delete_release_verifier", "missing required file: tests/test_release_verifier.py"),
         ("rename_optimizer_test", "missing mandatory release test(s)"),
         ("pass_optimizer_test", "trivial mandatory release test(s)"),
         ("docstring_optimizer_test", "trivial mandatory release test(s)"),
@@ -53,6 +54,13 @@ def _tag_rc6(repo: Path) -> None:
         ("unsafe_dom", "dangerous frontend HTML/code sink(s) found"),
         ("bad_version", "package version/tag mismatch: package 1.0.0rc2, tag v1.0.0-rc6"),
         ("remove_probe", "release probe layer is missing required probe(s)"),
+        ("skip_optimizer_test", "uses forbidden mandatory pytest outcome(s): skip"),
+        ("xfail_optimizer_test", "uses forbidden mandatory pytest outcome(s): xfail"),
+        ("trivial_probe", "release probe layer has trivial required probe(s)"),
+        ("missing_wsgi", "documented app:app entrypoint is missing"),
+        ("protocol_relative_cdn", "remote/CDN URL found in bundled frontend assets"),
+        ("spaced_debug", "debug=True found in app.py"),
+        ("duplicate_demo_key", "fixture/domain verification failed"),
     ],
 )
 def test_release_verifier_rejects_adversarial_mutations(tmp_path, mutation, expected_reason):
@@ -60,6 +68,8 @@ def test_release_verifier_rejects_adversarial_mutations(tmp_path, mutation, expe
     optimizer = repo / "tests" / "test_optimizer.py"
     if mutation == "delete_optimizer":
         optimizer.unlink()
+    elif mutation == "delete_release_verifier":
+        (repo / "tests" / "test_release_verifier.py").unlink()
     elif mutation == "rename_optimizer_test":
         optimizer.write_text(optimizer.read_text(encoding="utf-8").replace(
             "test_solver_error_not_infeasible", "test_renamed_solver_error"
@@ -102,6 +112,32 @@ def test_release_verifier_rejects_adversarial_mutations(tmp_path, mutation, expe
         probes.write_text(probes.read_text(encoding="utf-8").replace(
             "def probe_primary_chain() -> None:", "def removed_primary_chain() -> None:"
         ), encoding="utf-8")
+    elif mutation in {"skip_optimizer_test", "xfail_optimizer_test"}:
+        outcome = "skip" if mutation.startswith("skip") else "xfail"
+        optimizer.write_text(
+            "import pytest\n\n"
+            f"def test_solver_error_not_infeasible():\n    pytest.{outcome}('disabled')\n\n"
+            f"def test_unexpected_solver_status_is_solver_error():\n    pytest.{outcome}('disabled')\n\n"
+            f"def test_incomplete_optimal_assignment_is_solver_error():\n    pytest.{outcome}('disabled')\n",
+            encoding="utf-8",
+        )
+    elif mutation == "trivial_probe":
+        probes = repo / "scripts" / "release_probes.py"
+        probes.write_text(probes.read_text(encoding="utf-8").replace(
+            "def probe_primary_chain() -> None:\n", "def probe_primary_chain() -> None:\n    return\n"
+        ), encoding="utf-8")
+    elif mutation == "missing_wsgi":
+        app = repo / "app.py"
+        app.write_text(app.read_text(encoding="utf-8").replace("app = create_app()", "application = create_app()"), encoding="utf-8")
+    elif mutation == "protocol_relative_cdn":
+        html = repo / "templates" / "index.html"
+        html.write_text(html.read_text(encoding="utf-8") + '\n<script src="//cdn.example.com/test.js"></script>\n', encoding="utf-8")
+    elif mutation == "spaced_debug":
+        app = repo / "app.py"
+        app.write_text(app.read_text(encoding="utf-8").replace("debug=False", "debug = True"), encoding="utf-8")
+    elif mutation == "duplicate_demo_key":
+        demo = repo / "data" / "demo_school.json"
+        demo.write_text(demo.read_text(encoding="utf-8").replace('"capacity": 30,', '"capacity": 30, "capacity": 31,', 1), encoding="utf-8")
     else:
         raise AssertionError(f"unknown mutation: {mutation}")
 
